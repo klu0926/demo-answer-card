@@ -1,8 +1,18 @@
 ﻿// global store
 
+const APP_NAME = '答案卡';
+const LOCAL_TITLE_SUFFIX = ' (LOCAL)';
+
 const appContainer = document.getElementById('app-container');
 const navTitle = document.getElementById('nav-title');
 const navActions = document.getElementById('navbar-actions');
+
+const isLocalEnvironment = () => {
+    const host = window.location.hostname.toLowerCase();
+    return host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.local');
+};
+
+document.title = APP_NAME + (isLocalEnvironment() ? LOCAL_TITLE_SUFFIX : '');
 
 // Simple Router
 function navigateTo(page, params = {}) {
@@ -29,7 +39,7 @@ function navigateTo(page, params = {}) {
 
 // ========== 1. Landing Page (Home) ==========
 function renderHome() {
-    navTitle.textContent = '模擬答案卡系統';
+    navTitle.textContent = APP_NAME;
     
     const html = `
         <div class="landing-grid">
@@ -537,6 +547,8 @@ function renderTest(params) {
         if(!historyRecord) return navigateTo('preview');
     }
 
+    const hasAnswerKey = !!(card.answerKey && Object.keys(card.answerKey).length > 0);
+
     // Reset state
     testState = { timerInterval: null, secondsElapsed: 0, answers: {}, isStarted: false, isPaused: false };
     if(mode === 'set_key' && card.answerKey) testState.answers = {...card.answerKey};
@@ -617,6 +629,7 @@ function renderTest(params) {
             <div class="test-status-sticky">
                 <div id="test-timer-display" class="test-timer test-timer-box">00:00</div>
                 <div id="test-progress-text" class="test-progress">完成度: 0 / ${card.totalQuestions}</div>
+                <button class="md-btn md-btn-outlined" id="btn-live-feedback" ${hasAnswerKey ? '' : 'disabled'}>即時對答: 關</button>
                 <button class="md-btn md-btn-contained btn-start-danger" id="btn-toggle-test">開始測驗</button>
             </div>
         `;
@@ -649,7 +662,7 @@ function renderTest(params) {
         }).join('');
 
         headerHtml = `
-            <div class="test-sticky-header" style="justify-content:center; padding: 24px;">
+            <div class="review-header">
                 <div style="text-align:center;">
                     <div style="margin-bottom:12px;">
                         <select id="review-history-select" class="md-input" style="min-width:280px; max-width:100%;">
@@ -705,6 +718,37 @@ function renderTest(params) {
         updateProgress();
     };
     
+    let isLiveFeedbackEnabled = false;
+    const feedbackClasses = ['review-correct', 'review-wrong', 'review-key'];
+
+    const clearLiveFeedback = () => {
+        document.querySelectorAll('.bubble').forEach(b => b.classList.remove(...feedbackClasses));
+    };
+
+    const applyLiveFeedbackForQuestion = (q) => {
+        if (mode !== 'test' || !isLiveFeedbackEnabled || !hasAnswerKey) return;
+        const row = document.querySelector(`.bubble[data-q="${q}"]`)?.closest('.question-row');
+        if (!row) return;
+
+        const selectedVal = testState.answers[q];
+        const correctVal = card.answerKey ? card.answerKey[q] : null;
+        const rowBubbles = row.querySelectorAll('.bubble');
+        rowBubbles.forEach(b => b.classList.remove(...feedbackClasses));
+
+        if (!selectedVal || !correctVal) return;
+
+        const selectedBubble = row.querySelector(`.bubble[data-val="${selectedVal}"]`);
+        const correctBubble = row.querySelector(`.bubble[data-val="${correctVal}"]`);
+
+        if (selectedVal === correctVal) {
+            if (selectedBubble) selectedBubble.classList.add('review-correct');
+            return;
+        }
+
+        if (selectedBubble) selectedBubble.classList.add('review-wrong');
+        if (correctBubble) correctBubble.classList.add('review-key');
+    };
+
     // Bubble Click (Ripple + Select)
     allBubbles.forEach(bubble => {
         bubble.addEventListener('click', function(e) {
@@ -734,11 +778,13 @@ function renderTest(params) {
             
             // Update progress text
             updateProgress();
+            if (mode === 'test') applyLiveFeedbackForQuestion(q);
         });
     });
 
     if (mode === 'test') {
         const btnToggle = document.getElementById('btn-toggle-test');
+        const btnLiveFeedback = document.getElementById('btn-live-feedback');
         const btnFinish = document.getElementById('btn-finish-test');
         const timerDisplay = document.getElementById('test-timer-display');
         const hasTimeLimit = typeof card.timeLimitMinutes === 'number' && card.timeLimitMinutes > 0;
@@ -776,6 +822,26 @@ function renderTest(params) {
             const m = Math.floor(testState.secondsElapsed / 60).toString().padStart(2, '0');
             const s = (testState.secondsElapsed % 60).toString().padStart(2, '0');
             timerDisplay.textContent = `${m}:${s}`;
+        };
+
+        const refreshLiveFeedbackButton = () => {
+            if (!btnLiveFeedback) return;
+            btnLiveFeedback.textContent = `即時對答: ${isLiveFeedbackEnabled ? '開' : '關'}`;
+            btnLiveFeedback.classList.toggle('btn-live-feedback-on', isLiveFeedbackEnabled);
+        };
+
+        if (btnLiveFeedback) {
+            refreshLiveFeedbackButton();
+            btnLiveFeedback.addEventListener('click', () => {
+                if (!hasAnswerKey) return;
+                isLiveFeedbackEnabled = !isLiveFeedbackEnabled;
+                refreshLiveFeedbackButton();
+                if (!isLiveFeedbackEnabled) {
+                    clearLiveFeedback();
+                    return;
+                }
+                Object.keys(testState.answers).forEach(q => applyLiveFeedbackForQuestion(q));
+            });
         };
 
         updateTimerDisplay();
@@ -954,5 +1020,6 @@ function renderTest(params) {
 // Initialize
 window.navigateTo = navigateTo; // Expose to global for inline onclick
 navigateTo('home');
+
 
 

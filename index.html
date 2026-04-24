@@ -13,27 +13,32 @@
     <link rel="shortcut icon" href="public/favicon.ico">
     <meta name="theme-color" content="#3f51b5">
 
-    <!-- Google Fonts: Roboto & Material Symbols -->
+    <!-- Google Fonts: Outfit, Playfair Display, Noto Sans TC, Noto Serif TC -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700&family=Playfair+Display:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&display=swap" rel="stylesheet">
+
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <!-- 頂部導覽列 -->
     <header class="app-bar">
         <div class="app-bar-content">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <img src="public/favicon-32x32.png" alt="Logo" style="width: 24px; height: 24px;">
+            <div id="nav-left"></div>
+            <div id="nav-center">
+                <span class="app-logo" aria-hidden="true">
+                    <img src="public/favicon-32x32.png" alt="" class="app-logo-img">
+                </span>
                 <h1 class="app-title" id="nav-title">答案卡</h1>
             </div>
-            <div style="display: flex; align-items: center; gap: 16px;">
+            <div id="nav-right">
                 <nav id="navbar-actions">
-                    <!-- 動態生成的導覽列按鈕放這裡 (如：首頁、重新設定) -->
+                    <!-- 動態生成的導覽列按鈕放這裡 -->
                 </nav>
-                <button class="md-btn md-btn-text" id="theme-toggle" title="切換深色模式" style="padding: 0; min-width: 40px; border-radius: 50%;">
-                    <span class="material-symbols-outlined" id="theme-icon">dark_mode</span>
+                <button class="md-btn md-btn-text" id="theme-toggle" title="切換深色模式" style="padding: 0; min-width: 44px; min-height: 44px; border-radius: 3px;">
+                    <i class="fa-solid fa-moon" id="theme-icon"></i>
                 </button>
             </div>
         </div>

@@ -26,7 +26,7 @@ themeToggleBtn.addEventListener('click', () => {
     document.body.classList.toggle('dark-theme');
     const isDark = document.body.classList.contains('dark-theme');
     localStorage.setItem('demo_answer_card_theme', isDark ? 'dark' : 'light');
-    themeIcon.textContent = isDark ? 'light_mode' : 'dark_mode';
+    themeIcon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
 });
 
 // Simple Router
@@ -41,9 +41,7 @@ function navigateTo(page, params = {}) {
         case 'create':
             renderCreate();
             break;
-        case 'preview':
-            renderPreview();
-            break;
+
         case 'test':
             renderTest(params);
             break;
@@ -54,20 +52,20 @@ function navigateTo(page, params = {}) {
 
 // ========== 1. Landing Page (Home / Library) ==========
 function renderHome() {
-    navTitle.textContent = '我的答案卡';
+    navTitle.textContent = APP_NAME;
     navActions.innerHTML = ''; // Removed 'home' button since this is home
     
     // Header Actions Area
     let headerActionsHtml = `
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px;">
-            <button class="md-btn md-btn-contained" id="btn-goto-create" style="flex: 1; min-width: 140px;">
-                <span class="material-symbols-outlined">add</span> 製作答案卡
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; align-items: center;">
+            <button class="md-btn md-btn-outlined btn-create-card" id="btn-goto-create" style="flex: 1; min-width: 140px;">
+                <i class="fa-solid fa-plus"></i> 製作答案卡
             </button>
-            <button class="md-btn md-btn-outlined" id="btn-export-data" style="flex: 1; min-width: 140px;" title="匯出資料">
-                <span class="material-symbols-outlined">download</span> 匯出
+            <button class="md-btn md-btn-outlined" id="btn-export-data" style="padding: 0 16px; height: 38px; font-size: 0.85rem;" title="匯出資料">
+                <i class="fa-solid fa-arrow-up-from-bracket"></i> 匯出
             </button>
-            <button class="md-btn md-btn-outlined" id="btn-import-data" style="flex: 1; min-width: 140px;" title="匯入資料">
-                <span class="material-symbols-outlined">upload</span> 匯入
+            <button class="md-btn md-btn-outlined" id="btn-import-data" style="padding: 0 16px; height: 38px; font-size: 0.85rem;" title="匯入資料">
+                <i class="fa-solid fa-download"></i> 匯入
             </button>
         </div>
     `;
@@ -77,7 +75,7 @@ function renderHome() {
     if (cards.length === 0) {
         appContainer.innerHTML = headerActionsHtml + `
             <div class="md-card" style="text-align:center; padding:48px 16px;">
-                <span class="material-symbols-outlined" style="font-size:48px; color:var(--text-disabled); margin-bottom:16px;">inbox</span>
+                <img src="images/rabbit/question.png" alt="Empty" style="width: 140px; height: auto; margin-bottom: 24px; opacity: 0.85;">
                 <h2>還沒有任何答案卡</h2>
                 <p style="color:var(--text-secondary); margin-bottom:24px;">你還沒有建立過任何答案卡，現在就開始製作一個吧！</p>
                 <button class="md-btn md-btn-contained" id="btn-goto-create-empty">開始製作</button>
@@ -114,8 +112,8 @@ function renderHome() {
                     </div>
                     <div style="margin-bottom:16px;">
                         <div class="preview-status ${hasKey ? 'status-haskey' : 'status-nokey'}">
-                            <span class="material-symbols-outlined" style="font-size:18px;">${hasKey ? 'task_alt' : 'error'}</span>
-                            ${hasKey ? '已設定標準答案' : '尚未設定標準答案'}
+                            <i class="fa-solid ${hasKey ? 'fa-circle-check' : 'fa-circle-exclamation'}" style="font-size:18px;"></i>
+                            ${hasKey ? '已設定答案' : '尚未設定答案'}
                         </div>
                     </div>
                     <div class="preview-actions">
@@ -271,8 +269,8 @@ let createWizardState = {
 function renderCreate() {
     navTitle.textContent = '製作答案卡';
     navActions.innerHTML = `
-        <button class="md-btn md-btn-text" id="nav-btn-reset"><span class="material-symbols-outlined">refresh</span>重新設定</button>
-        <button class="md-btn md-btn-text" id="nav-btn-home"><span class="material-symbols-outlined">home</span>首頁</button>
+        <button class="md-btn md-btn-text" id="nav-btn-reset"><i class="fa-solid fa-rotate-right"></i>重新設定</button>
+        <button class="md-btn md-btn-text" id="nav-btn-home"><i class="fa-solid fa-house"></i>首頁</button>
     `;
     document.getElementById('nav-btn-home').addEventListener('click', () => navigateTo('home'));
     document.getElementById('nav-btn-reset').addEventListener('click', () => {
@@ -383,7 +381,7 @@ function renderWizardBody() {
                                 <input type="number" class="md-input part-count-inp" data-sidx="${sIdx}" data-pidx="${pIdx}" min="1" value="${p.count}" style="text-align:center; padding: 4px;">
                             </div>
                             <small>Q${p.start} - Q${p.end}</small>
-                            ${sec.parts.length > 1 ? `<span class="material-symbols-outlined btn-remove-part" data-sidx="${sIdx}" data-pidx="${pIdx}" style="position:absolute; top:4px; right:4px; font-size:16px; cursor:pointer; color:var(--md-error);">close</span>` : ''}
+                            ${sec.parts.length > 1 ? `<i class="fa-solid fa-xmark btn-remove-part" data-sidx="${sIdx}" data-pidx="${pIdx}" style="position:absolute; top:4px; right:4px; font-size:16px; cursor:pointer; color:var(--md-error);"></i>` : ''}
                         </div>
                     `;
                     currentStart = p.end + 1;
@@ -398,7 +396,7 @@ function renderWizardBody() {
                         <div class="parts-grid">
                             ${partsHtml}
                             <button class="md-btn md-btn-text btn-add-part" data-sidx="${sIdx}" style="height: auto; min-height: 80px; border: 1px dashed var(--md-primary); color: var(--md-primary);">
-                                <span class="material-symbols-outlined">add</span> 新增 Part
+                                <i class="fa-solid fa-plus"></i> 新增 Part
                             </button>
                         </div>
                     </div>
@@ -571,7 +569,7 @@ function saveAnswerCard() {
 
             let listHtml = '';
             sortedHist.forEach((record) => {
-                const scoreText = record.score !== null ? `${record.score} / ${card.totalQuestions}` : '未設定標準答案';
+                const scoreText = record.score !== null ? `${record.score} / ${card.totalQuestions}` : '未設定答案';
                 const stableNo = stableNumberMap[record.id] || '-';
                 const durationText = formatDuration(record.durationSeconds);
                 listHtml += `
@@ -595,7 +593,7 @@ function saveAnswerCard() {
                         <h3>歷史測驗清單</h3>
                         <div class="modal-header-actions">
                             <button class="md-btn md-btn-text sort-toggle-btn" id="btn-toggle-history-sort" title="切換排序">
-                                <span class="material-symbols-outlined">${sortDirection === 'asc' ? 'arrow_downward' : 'arrow_upward'}</span>
+                                <i class="fa-solid ${sortDirection === 'asc' ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>
                             </button>
                             <button class="md-btn md-btn-text modal-close-btn" id="btn-close-history-modal">關閉</button>
                         </div>
@@ -679,9 +677,9 @@ function renderTest(params) {
 
     // Nav setup
     navTitle.textContent = mode === 'test' ? '模擬考試: ' + card.name : 
-                           mode === 'set_key' ? '設定標準答案: ' + card.name : 
+                           mode === 'set_key' ? '設定答案: ' + card.name : 
                            '測驗歷史檢討: ' + card.name;
-    navActions.innerHTML = `<button class="md-btn md-btn-text" id="nav-btn-abandon"><span class="material-symbols-outlined">${mode==='test'?'close':'arrow_back'}</span>${mode==='test'?'放棄測驗':'返回'}</button>`;
+    navActions.innerHTML = `<button class="md-btn md-btn-text" id="nav-btn-abandon"><i class="fa-solid ${mode==='test'?'fa-xmark':'fa-arrow-left'}"></i>${mode==='test'?'放棄測驗':'返回'}</button>`;
     
     document.getElementById('nav-btn-abandon').addEventListener('click', () => {
         if(mode === 'test' && !confirm('確定要放棄考試嗎？進度將不會儲存。')) return;
@@ -693,8 +691,8 @@ function renderTest(params) {
     // Content Generation
     let partsHtml = '';
     card.sections.forEach(sec => {
-        partsHtml += `<div class="section-container" style="margin-bottom: 24px; padding: 12px; background: rgba(0,0,0,0.02); border-radius: 8px;">`;
-        partsHtml += `<h3 style="text-align: center; color: var(--md-primary); margin-bottom: 12px;">${sec.name}</h3>`;
+        partsHtml += `<div class="section-container" style="margin-bottom: 24px; padding: 14px 12px; background: linear-gradient(180deg, rgba(30,79,168,0.06), rgba(30,79,168,0.02)); border: 1px solid rgba(30,79,168,0.12); border-radius: 3px;">`;
+        partsHtml += `<h3 style="text-align: center; color: var(--md-primary); margin-bottom: 12px; letter-spacing: 0.01em;">${sec.name}</h3>`;
         sec.parts.forEach(part => {
             partsHtml += `
                 <div class="part-section">
@@ -755,11 +753,14 @@ function renderTest(params) {
                 <div class="test-entry-name">
                     <input type="text" id="test-instance-name" class="md-input" style="margin:0;" placeholder="模擬考試">
                 </div>
+                <div class="test-entry-tools">
+                    <button class="md-btn md-btn-outlined" id="btn-live-feedback" ${hasAnswerKey ? '' : 'disabled'}>即時對答: 關</button>
+                    <button class="md-btn md-btn-outlined" id="btn-toggle-chain">題號鏈: 開</button>
+                </div>
             </div>
             <div class="test-status-sticky">
                 <div id="test-timer-display" class="test-timer test-timer-box">00:00</div>
                 <div id="test-progress-text" class="test-progress">完成度: 0 / ${card.totalQuestions}</div>
-                <button class="md-btn md-btn-outlined" id="btn-live-feedback" ${hasAnswerKey ? '' : 'disabled'}>即時對答: 關</button>
                 <button class="md-btn md-btn-contained btn-start-danger" id="btn-toggle-test">開始測驗</button>
             </div>
         `;
@@ -779,7 +780,7 @@ function renderTest(params) {
                 <div class="set-key-save-wrap">
                     <button class="md-btn md-btn-contained set-key-save-btn" id="btn-save-key">
                         <span class="set-key-save-title">儲存答案</span>
-                        <span id="test-progress-text" class="test-progress set-key-progress">${Object.keys(testState.answers).length} / ${card.totalQuestions}</span>
+                        <span id="test-progress-text" class="test-progress set-key-progress">答案：${Object.keys(testState.answers).length} / ${card.totalQuestions}</span>
                     </button>
                 </div>
             </div>
@@ -794,17 +795,17 @@ function renderTest(params) {
         let scoreDetailsHtml = '';
         if (historyRecord.score !== null && typeof historyRecord.score === 'object') {
             const { totalCorrect, totalQuestions, sectionsScore, partsScore } = historyRecord.score;
-            scoreDetailsHtml += `<p style="font-size:1.8rem; color:var(--md-primary); font-weight:bold; margin: 8px 0;">總分: ${totalCorrect} / ${totalQuestions}</p>`;
+            scoreDetailsHtml += `<p style="font-size:1.35rem; color:var(--md-primary); font-weight:700; margin: 8px 0;">總分: ${totalCorrect} / ${totalQuestions}</p>`;
             scoreDetailsHtml += `<div style="display: flex; flex-direction: column; gap: 16px; margin-top: 12px; text-align: left;">`;
             
             card.sections.forEach(sec => {
                 const secScore = sectionsScore[sec.id];
                 if (!secScore) return;
                 scoreDetailsHtml += `
-                <div style="background: var(--md-surface); box-shadow: var(--elevation-1); padding: 12px 16px; border-radius: 8px; border-left: 4px solid var(--md-primary);">
+                <div style="background: var(--md-surface); box-shadow: var(--elevation-1); padding: 12px 16px; border-radius: 3px; border-left: 4px solid var(--md-primary);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-weight: bold; font-size: 1.1rem; color: var(--text-primary);">${sec.name}</span>
-                        <span style="font-weight: bold; font-size: 1.1rem; color: var(--md-primary-variant);">${secScore.correct} / ${secScore.total}</span>
+                        <span style="font-weight: 700; font-size: 1rem; color: var(--text-primary);">${sec.name}</span>
+                        <span style="font-weight: 700; font-size: 1rem; color: var(--md-primary-variant);">${secScore.correct} / ${secScore.total}</span>
                     </div>
                     <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                 `;
@@ -812,7 +813,7 @@ function renderTest(params) {
                     const pScore = partsScore[p.id];
                     if (!pScore) return;
                     scoreDetailsHtml += `
-                        <div style="background: rgba(0,0,0,0.04); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; color: var(--text-secondary);">
+                        <div style="background: rgba(0,0,0,0.04); padding: 4px 8px; border-radius: 3px; font-size: 0.85rem; color: var(--text-secondary);">
                             Part ${p.id}: <span style="color: var(--md-primary); font-weight: bold;">${pScore.correct} / ${pScore.total}</span>
                         </div>
                     `;
@@ -821,8 +822,8 @@ function renderTest(params) {
             });
             scoreDetailsHtml += `</div>`;
         } else {
-            const sVal = typeof historyRecord.score === 'number' ? historyRecord.score : (historyRecord.score?.totalCorrect ?? '未設定標準答案');
-            scoreDetailsHtml += `<p style="font-size:1.5rem; color:var(--md-primary); font-weight:bold;">成績: ${sVal} / ${card.totalQuestions}</p>`;
+            const sVal = typeof historyRecord.score === 'number' ? historyRecord.score : (historyRecord.score?.totalCorrect ?? '未設定答案');
+            scoreDetailsHtml += `<p style="font-size:1.2rem; color:var(--md-primary); font-weight:700;">成績: ${sVal} / ${card.totalQuestions}</p>`;
         }
 
         headerHtml = `
@@ -843,39 +844,75 @@ function renderTest(params) {
         `;
     }
 
-    // Mini-map logic
+    // Mini-map logic & Vertical Flowing Chain
     let miniMapHtml = '';
+    let verticalChainHtml = '';
+    
     if (mode === 'test') {
         let gridHtml = '';
+        let chainHtml = '';
         for (let i = 1; i <= card.totalQuestions; i++) {
             gridHtml += `<div class="minimap-node" data-target="${i}">${i}</div>`;
+            chainHtml += `<div class="vertical-chain-node" data-target="${i}" title="第 ${i} 題"></div>`;
         }
         miniMapHtml = `
-            <button id="btn-toggle-minimap" class="md-btn md-btn-contained" style="position: fixed; bottom: 24px; right: 24px; z-index: 1000; border-radius: 50%; width: 56px; height: 56px; padding: 0;">
-                <span class="material-symbols-outlined">grid_view</span>
-            </button>
             <div id="minimap-drawer" class="minimap-drawer hidden">
                 <div class="minimap-header">
                     <h3>導航地圖</h3>
-                    <button class="md-btn md-btn-text" id="btn-close-minimap" style="min-width: 0; padding: 4px;"><span class="material-symbols-outlined">close</span></button>
+                    <button class="md-btn md-btn-text" id="btn-close-minimap" style="min-width: 0; padding: 4px;"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="minimap-grid">${gridHtml}</div>
             </div>
         `;
+        
+        verticalChainHtml = `
+            <aside class="vertical-chain-container" id="vertical-chain-container" aria-label="題號鏈導覽">
+                <div class="vertical-chain-track" id="vertical-chain-track"></div>
+                <div class="vertical-chain-inner">
+                    ${chainHtml}
+                </div>
+            </aside>
+        `;
     }
+
+    const testBodyHtml = mode === 'test'
+        ? `
+        <div class="test-body-layout" id="test-body-layout">
+            ${verticalChainHtml}
+            <div class="test-questions-wrap" id="test-questions-wrap">
+                ${partsHtml}
+            </div>
+        </div>
+        `
+        : partsHtml;
+
+    const floatingControlsHtml = mode === 'test' ? `
+        <div class="floating-action-stack">
+            <button class="md-btn md-btn-contained scroll-jump-btn hidden" id="btn-scroll-up" title="回到上方">
+                <i class="fa-solid fa-arrow-up"></i>
+            </button>
+            <button class="md-btn md-btn-contained scroll-jump-btn hidden" id="btn-scroll-down-latest" title="前往最新作答題目">
+                <i class="fa-solid fa-arrow-down"></i>
+            </button>
+            <button id="btn-toggle-minimap" class="md-btn md-btn-contained mini-fab-btn minimap-fab-btn" title="開啟導航地圖">
+                <i class="fa-solid fa-table-cells"></i>
+            </button>
+        </div>
+    ` : '';
 
     appContainer.innerHTML = headerHtml + `
         <div class="md-card test-container ${mode==='test'?'test-locked':''}" id="test-card-container">
-            ${partsHtml}
+            ${testBodyHtml}
         </div>
         ${mode === 'test' ? `
             <div class="test-bottom-actions">
                 <button class="md-btn md-btn-contained hidden" id="btn-finish-test">
-                    <span class="material-symbols-outlined">done_all</span> 交卷
+                    <i class="fa-solid fa-check-double"></i> 交卷
                 </button>
             </div>
         ` : ''}
         ${miniMapHtml}
+        ${floatingControlsHtml}
     `;
 
     // Interactivity logic
@@ -885,15 +922,26 @@ function renderTest(params) {
         const prog = document.getElementById('test-progress-text');
         if (!prog) return;
         if(mode==='test') prog.textContent = `完成度: ${Object.keys(testState.answers).length} / ${card.totalQuestions}`;
-        if(mode==='set_key') prog.textContent = `${Object.keys(testState.answers).length} / ${card.totalQuestions}`;
+        if(mode==='set_key') prog.textContent = `答案：${Object.keys(testState.answers).length} / ${card.totalQuestions}`;
         
-        // Update minimap
+        // Update minimap & vertical chain
         if (mode === 'test') {
             document.querySelectorAll('.minimap-node').forEach(node => {
                 const q = node.dataset.target;
                 node.classList.remove('answered', 'flagged-node');
                 if (testState.answers[q]) node.classList.add('answered');
                 if (testState.flagged[q]) node.classList.add('flagged-node');
+            });
+            document.querySelectorAll('.vertical-chain-node').forEach(node => {
+                const q = node.dataset.target;
+                const nextQ = (parseInt(q) + 1).toString();
+                node.classList.remove('answered', 'flagged-node', 'connected-answered');
+                if (testState.answers[q]) node.classList.add('answered');
+                if (testState.flagged[q]) node.classList.add('flagged-node');
+                
+                if (testState.answers[q] && testState.answers[nextQ]) {
+                    node.classList.add('connected-answered');
+                }
             });
         }
     };
@@ -920,6 +968,7 @@ function renderTest(params) {
     };
 
     initVisualState();
+    let refreshScrollJumpButtonsFn = null;
 
     let isLiveFeedbackEnabled = false;
     const feedbackClasses = ['review-correct', 'review-wrong', 'review-key'];
@@ -991,6 +1040,7 @@ function renderTest(params) {
             // Update progress text
             updateProgress();
             if (mode === 'test') applyLiveFeedbackForQuestion(q);
+            if (mode === 'test' && refreshScrollJumpButtonsFn) refreshScrollJumpButtonsFn();
         });
     });
 
@@ -1015,6 +1065,7 @@ function renderTest(params) {
                     secondsElapsed: testState.secondsElapsed
                 });
                 updateProgress(); // To update minimap flagged color
+                if (refreshScrollJumpButtonsFn) refreshScrollJumpButtonsFn();
             }
         });
     });
@@ -1044,8 +1095,106 @@ function renderTest(params) {
             });
         }
 
+        // Vertical chain bindings
+        const verticalContainer = document.getElementById('vertical-chain-container');
+        const verticalTrack = document.getElementById('vertical-chain-track');
+        const questionsWrap = document.getElementById('test-questions-wrap');
+        const testBodyLayout = document.getElementById('test-body-layout');
+        const btnToggleChain = document.getElementById('btn-toggle-chain');
+        const CHAIN_PREF_KEY = 'answer-card-show-vertical-chain';
+
+        const syncVerticalChainPositions = () => {
+            if (!verticalContainer || !questionsWrap || !verticalTrack) return;
+            const nodes = Array.from(document.querySelectorAll('.vertical-chain-node'));
+            if (!nodes.length) return;
+
+            const wrapTop = questionsWrap.getBoundingClientRect().top + window.scrollY;
+            let firstTop = null;
+            let lastTop = null;
+
+            nodes.forEach((node) => {
+                const targetQ = node.dataset.target;
+                const row = document.querySelector(`.bubble[data-q="${targetQ}"]`)?.closest('.question-row');
+                if (!row) return;
+                const rowRect = row.getBoundingClientRect();
+                const rowCenter = (rowRect.top + window.scrollY + rowRect.height / 2) - wrapTop;
+                node.style.top = `${Math.round(rowCenter)}px`;
+                if (firstTop === null || rowCenter < firstTop) firstTop = rowCenter;
+                if (lastTop === null || rowCenter > lastTop) lastTop = rowCenter;
+            });
+
+            const contentHeight = Math.max(questionsWrap.scrollHeight, 1);
+            verticalContainer.style.height = `${contentHeight}px`;
+
+            if (firstTop !== null && lastTop !== null) {
+                verticalTrack.style.top = `${Math.round(firstTop)}px`;
+                verticalTrack.style.height = `${Math.max(0, Math.round(lastTop - firstTop))}px`;
+            } else {
+                verticalTrack.style.height = '0';
+            }
+        };
+
+        const applyChainVisibility = (isVisible) => {
+            if (!testBodyLayout || !btnToggleChain) return;
+            testBodyLayout.classList.toggle('chain-hidden', !isVisible);
+            btnToggleChain.textContent = `題號鏈: ${isVisible ? '開' : '關'}`;
+            if (isVisible) {
+                requestAnimationFrame(syncVerticalChainPositions);
+            }
+        };
+
+        if (btnToggleChain) {
+            const saved = localStorage.getItem(CHAIN_PREF_KEY);
+            const initialVisible = saved === null ? true : saved === '1';
+            applyChainVisibility(initialVisible);
+
+            btnToggleChain.addEventListener('click', () => {
+                const isCurrentlyVisible = !testBodyLayout.classList.contains('chain-hidden');
+                const nextVisible = !isCurrentlyVisible;
+                localStorage.setItem(CHAIN_PREF_KEY, nextVisible ? '1' : '0');
+                applyChainVisibility(nextVisible);
+            });
+        }
+
+        if (verticalContainer) {
+            document.querySelectorAll('.vertical-chain-node').forEach(node => {
+                node.addEventListener('click', () => {
+                    const targetQ = node.dataset.target;
+                    const el = document.querySelector(`.bubble[data-q="${targetQ}"]`);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                });
+            });
+
+            // Mouse Hover Logic for active highlight
+            document.querySelectorAll('.question-row').forEach(row => {
+                row.addEventListener('mouseenter', () => {
+                    const bubble = row.querySelector('.bubble');
+                    if (bubble) {
+                        const q = bubble.dataset.q;
+                        document.querySelectorAll('.vertical-chain-node').forEach(n => n.classList.remove('active-node'));
+                        const activeNode = document.querySelector(`.vertical-chain-node[data-target="${q}"]`);
+                        if (activeNode) {
+                            activeNode.classList.add('active-node');
+                        }
+                    }
+                });
+                row.addEventListener('mouseleave', () => {
+                    const bubble = row.querySelector('.bubble');
+                    if (bubble) {
+                        const q = bubble.dataset.q;
+                        const activeNode = document.querySelector(`.vertical-chain-node[data-target="${q}"]`);
+                        if (activeNode) activeNode.classList.remove('active-node');
+                    }
+                });
+            });
+        }
+        syncVerticalChainPositions();
+        window.addEventListener('resize', syncVerticalChainPositions);
+
         const btnToggle = document.getElementById('btn-toggle-test');
         const btnLiveFeedback = document.getElementById('btn-live-feedback');
+        const btnScrollUp = document.getElementById('btn-scroll-up');
+        const btnScrollDownLatest = document.getElementById('btn-scroll-down-latest');
         const btnFinish = document.getElementById('btn-finish-test');
         const timerDisplay = document.getElementById('test-timer-display');
         const hasTimeLimit = typeof card.timeLimitMinutes === 'number' && card.timeLimitMinutes > 0;
@@ -1072,7 +1221,7 @@ function renderTest(params) {
                 durationSeconds: testState.secondsElapsed
             });
             if (isAutoSubmit) alert('時間到，已自動交卷。');
-            navigateTo('preview');
+            navigateTo('home');
         };
 
         const updateTimerDisplay = () => {
@@ -1095,6 +1244,27 @@ function renderTest(params) {
             btnLiveFeedback.classList.toggle('btn-live-feedback-on', isLiveFeedbackEnabled);
         };
 
+        const getLatestAnsweredQuestion = () => {
+            const answered = Object.keys(testState.answers).map(Number).filter(n => !Number.isNaN(n));
+            return answered.length ? Math.max(...answered) : null;
+        };
+
+        const refreshScrollJumpButtons = () => {
+            if (!btnScrollUp || !btnScrollDownLatest) return;
+            btnScrollUp.classList.toggle('hidden', window.scrollY <= 260);
+
+            let showDown = false;
+            const latestQ = getLatestAnsweredQuestion();
+            if (latestQ !== null && window.scrollY < 180) {
+                const latestRow = document.querySelector(`.bubble[data-q="${latestQ}"]`)?.closest('.question-row');
+                if (latestRow) {
+                    showDown = latestRow.getBoundingClientRect().top > 280;
+                }
+            }
+            btnScrollDownLatest.classList.toggle('hidden', !showDown);
+        };
+        refreshScrollJumpButtonsFn = refreshScrollJumpButtons;
+
         if (btnLiveFeedback) {
             refreshLiveFeedbackButton();
             btnLiveFeedback.addEventListener('click', () => {
@@ -1109,7 +1279,25 @@ function renderTest(params) {
             });
         };
 
+        if (btnScrollUp) {
+            btnScrollUp.addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        }
+
+        if (btnScrollDownLatest) {
+            btnScrollDownLatest.addEventListener('click', () => {
+                const latestQ = getLatestAnsweredQuestion();
+                if (latestQ === null) return;
+                const latestBubble = document.querySelector(`.bubble[data-q="${latestQ}"]`);
+                if (latestBubble) latestBubble.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+        }
+
         updateTimerDisplay();
+        refreshScrollJumpButtons();
+        window.addEventListener('scroll', refreshScrollJumpButtons);
+        window.addEventListener('resize', refreshScrollJumpButtons);
 
         const startTimer = () => {
             testState.timerInterval = setInterval(() => {
@@ -1265,8 +1453,8 @@ function renderTest(params) {
                 timeLimitMinutes = parsed;
              }
              store.updateAnswerKey(card.id, testState.answers, timeLimitMinutes);
-             alert('標準答案設定成功！過往的測驗歷史已重新計算分數。');
-             navigateTo('preview');
+             alert('答案設定成功！過往的測驗歷史已重新計算分數。');
+             navigateTo('home');
         });
     }
 

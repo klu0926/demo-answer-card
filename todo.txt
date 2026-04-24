@@ -1,32 +1,5 @@
-- in test, seperate each parts with a light line and text
 
-- Mini-Map" / Question Navigator:
-Problem: If a user skips question 45 to come back to it later, it's hard to find it again by scrolling.
-Solution: Add a floating action button (FAB) or a side drawer that shows a grid of tiny squares representing all 200 questions. Color-code them: Grey = Unanswered, Blue = Answered, Red = Flagged. Clicking a square smoothly scrolls them right to that question.
+- i am not seeig score for each section and parts
 
-Satisfying Micro-Interactions:
-Solution: Add subtle animations. When an option bubble is tapped, it should have a Material Design "ripple" effect or a slight scale "pop" animation. When transitioning between the Setup Steps, slide the content left/right rather than instantly replacing it.
-
-
-Dark Mode:
-Solution: Studying often happens late at night. Implementing a system-aware or toggleable Dark Mode will reduce eye strain and make the app feel incredibly premium.
-
-
-Auto-Save & Resume:
-Idea: Imagine taking a 2-hour test and accidentally refreshing the page. Instead of losing everything, use localStorage to save their current session's answers every time they click a bubble. Allow them to "Resume" an incomplete test.
-if a test is not completed and paused, user can see a resume button in that test card, only 1 test can be resume per test
-
-create test allow to create "section", section is a group of "part", for example"listening section can have 3 parts, writing section can have 5 parts
-
-
-final scroe shows total score as well as section score, part score
-
-
-Data Export/Import (Backup):
-Idea: Because localStorage is tied to the browser, clearing cache deletes all test history. Add a simple "Export Data" button that downloads a .json file of their store.js data, and an "Import Data" to restore it on a different device.
-
-
-Flagging System:
-Idea: Add a small "Flag" icon next to each question number. Users can click it if they are unsure of their answer, serving as a visual reminder to review it before submitting. this can be done by right click on an answer, the background of that answer (for example 4 bubbles) will be sligly differnet to show it has been flaged.
 
 

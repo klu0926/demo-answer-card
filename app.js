@@ -7,6 +7,77 @@ const appContainer = document.getElementById('app-container');
 const navTitle = document.getElementById('nav-title');
 const navActions = document.getElementById('navbar-actions');
 
+const escapeHtmlText = (str) => String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+function showAppDialog({
+    title = '請確認',
+    message = '',
+    confirmText = '確定',
+    cancelText = '取消',
+    variant = 'default',
+    showCancel = true
+} = {}) {
+    return new Promise((resolve) => {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop app-dialog-backdrop';
+        backdrop.tabIndex = -1;
+        const messageHtml = escapeHtmlText(message).replace(/\n/g, '<br>');
+        backdrop.innerHTML = `
+            <div class="modal-dialog app-dialog ${showCancel ? 'app-dialog-question' : 'app-dialog-alert'} ${variant === 'danger' ? 'app-dialog-danger' : ''}" role="dialog" aria-modal="true" aria-label="${escapeHtmlText(title)}">
+                <div class="modal-header">
+                    <h3>${escapeHtmlText(title)}</h3>
+                </div>
+                <p class="app-dialog-message">${messageHtml}</p>
+                <div class="modal-actions">
+                    ${showCancel ? `<button class="md-btn md-btn-outlined app-dialog-cancel">${escapeHtmlText(cancelText)}</button>` : ''}
+                    <button class="md-btn md-btn-contained app-dialog-confirm">${escapeHtmlText(confirmText)}</button>
+                </div>
+            </div>
+        `;
+
+        const close = (value) => {
+            backdrop.remove();
+            resolve(value);
+        };
+
+        document.body.appendChild(backdrop);
+        const confirmBtn = backdrop.querySelector('.app-dialog-confirm');
+        const cancelBtn = backdrop.querySelector('.app-dialog-cancel');
+        backdrop.focus();
+        confirmBtn.focus();
+        confirmBtn.addEventListener('click', () => close(true));
+        if (cancelBtn) cancelBtn.addEventListener('click', () => close(false));
+        backdrop.addEventListener('click', (e) => {
+            if (e.target === backdrop && showCancel) close(false);
+        });
+        backdrop.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && showCancel) close(false);
+            if (e.key === 'Enter') close(true);
+        });
+    });
+}
+
+const showAppAlert = (message, title = '提示') => showAppDialog({
+    title,
+    message,
+    confirmText: '知道了',
+    showCancel: false
+});
+
+const showAppConfirm = (message, title = '請確認', variant = 'default') => showAppDialog({
+    title,
+    message,
+    confirmText: '確定',
+    cancelText: '取消',
+    variant,
+    showCancel: true
+});
+
 const isLocalEnvironment = () => {
     const host = window.location.hostname.toLowerCase();
     return host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.local');
@@ -16,25 +87,29 @@ document.title = APP_NAME + (isLocalEnvironment() ? LOCAL_TITLE_SUFFIX : '');
 
 // Dark Mode Logic
 const themeToggleBtn = document.getElementById('theme-toggle');
-const themeIcon = document.getElementById('theme-icon');
 const isDarkMode = localStorage.getItem('demo_answer_card_theme') === 'dark';
+const syncThemeToggle = (isDark) => {
+    themeToggleBtn.classList.toggle('is-dark', isDark);
+    themeToggleBtn.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+    themeToggleBtn.title = isDark ? '切換淺色模式' : '切換深色模式';
+};
 if (isDarkMode) {
     document.body.classList.add('dark-theme');
-    themeIcon.textContent = 'light_mode';
 }
+syncThemeToggle(isDarkMode);
 themeToggleBtn.addEventListener('click', () => {
     document.body.classList.toggle('dark-theme');
     const isDark = document.body.classList.contains('dark-theme');
     localStorage.setItem('demo_answer_card_theme', isDark ? 'dark' : 'light');
-    themeIcon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    syncThemeToggle(isDark);
 });
 
 // Simple Router
 function navigateTo(page, params = {}) {
     appContainer.innerHTML = '';
     navActions.innerHTML = ''; // Reset navbar actions
-    
-    switch(page) {
+
+    switch (page) {
         case 'home':
             renderHome();
             break;
@@ -52,36 +127,45 @@ function navigateTo(page, params = {}) {
 
 // ========== 1. Landing Page (Home / Library) ==========
 function renderHome() {
+    document.body.classList.add('home-page');
     navTitle.textContent = APP_NAME;
     navActions.innerHTML = ''; // Removed 'home' button since this is home
-    
+
     // Header Actions Area
     let headerActionsHtml = `
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; align-items: center;">
-            <button class="md-btn md-btn-outlined btn-create-card" id="btn-goto-create" style="flex: 1; min-width: 140px;">
+        <section class="home-toolbar" aria-label="答案卡工具列">
+            <div class="home-toolbar-copy">
+                <h2>我的答案卡</h2>
+                <p>建立、作答、設定答案與回顧每次測驗紀錄。</p>
+            </div>
+            <div class="home-toolbar-actions">
+            <button class="md-btn md-btn-contained btn-create-card" id="btn-goto-create">
                 <i class="fa-solid fa-plus"></i> 製作答案卡
             </button>
-            <button class="md-btn md-btn-outlined" id="btn-export-data" style="padding: 0 16px; height: 38px; font-size: 0.85rem;" title="匯出資料">
+            <button class="md-btn md-btn-outlined" id="btn-export-data" title="匯出資料">
                 <i class="fa-solid fa-arrow-up-from-bracket"></i> 匯出
             </button>
-            <button class="md-btn md-btn-outlined" id="btn-import-data" style="padding: 0 16px; height: 38px; font-size: 0.85rem;" title="匯入資料">
+            <button class="md-btn md-btn-outlined" id="btn-import-data" title="匯入資料">
                 <i class="fa-solid fa-download"></i> 匯入
             </button>
-        </div>
+            </div>
+        </section>
     `;
 
     const cards = store.getCards();
 
     if (cards.length === 0) {
         appContainer.innerHTML = headerActionsHtml + `
-            <div class="md-card" style="text-align:center; padding:48px 16px;">
-                <img src="images/rabbit/question.png" alt="Empty" style="width: 140px; height: auto; margin-bottom: 24px; opacity: 0.85;">
-                <h2>還沒有任何答案卡</h2>
-                <p style="color:var(--text-secondary); margin-bottom:24px;">你還沒有建立過任何答案卡，現在就開始製作一個吧！</p>
-                <button class="md-btn md-btn-contained" id="btn-goto-create-empty">開始製作</button>
+            <div class="md-card empty-state">
+                <img class="empty-rabbit" src="images/rabbit/question.png" alt="尚無答案卡">
+                <div class="empty-state-copy">
+                    <h2>還沒有任何答案卡</h2>
+                    <p>先建立題目數、選項與 Section 結構，之後就能快速作答、計時與查看成績。</p>
+                    <button class="md-btn md-btn-contained" id="btn-goto-create-empty"><i class="fa-solid fa-plus"></i> 開始製作</button>
+                </div>
             </div>
         `;
-        if(document.getElementById('btn-goto-create-empty')) {
+        if (document.getElementById('btn-goto-create-empty')) {
             document.getElementById('btn-goto-create-empty').addEventListener('click', () => navigateTo('create'));
         }
     } else {
@@ -106,8 +190,10 @@ function renderHome() {
                             <h3 class="card-name-label" data-id="${c.id}" title="雙擊可修改名稱">${escapedCardName}</h3>
                             <input type="text" class="md-input card-name-input hidden" data-id="${c.id}" data-original="${escapedCardName}" value="${escapedCardName}" aria-label="答案卡名稱">
                         </div>
-                        <div style="color:var(--text-secondary); font-size:0.875rem;">
-                            <span>共 ${c.totalQuestions} 題</span> • <span>${c.sections.reduce((acc, s) => acc + s.parts.length, 0)} 個 Part</span>
+                        <div class="card-meta">
+                            <span><i class="fa-regular fa-circle-question"></i> 共 ${c.totalQuestions} 題</span>
+                            <span><i class="fa-solid fa-layer-group"></i> ${c.sections.reduce((acc, s) => acc + s.parts.length, 0)} 個 Part</span>
+                            <span><i class="fa-regular fa-clock"></i> 歷史 ${history.length}</span>
                         </div>
                     </div>
                     <div style="margin-bottom:16px;">
@@ -117,11 +203,11 @@ function renderHome() {
                         </div>
                     </div>
                     <div class="preview-actions">
-                        <button class="md-btn md-btn-contained btn-start-test-action" data-id="${c.id}">開始測驗</button>
+                        <button class="md-btn md-btn-contained btn-start-test-action" data-id="${c.id}"><i class="fa-solid fa-play"></i> 開始測驗</button>
                         ${pausedTest ? `<button class="md-btn md-btn-outlined btn-resume-test-action" style="color: var(--md-secondary); border-color: var(--md-secondary);" data-id="${c.id}">繼續測驗</button>` : ''}
-                        <button class="md-btn md-btn-outlined btn-set-key-action" data-id="${c.id}">設定解答</button>
-                        ${history.length > 0 ? `<button class="md-btn md-btn-outlined btn-view-history-action" data-id="${c.id}">歷史 (${history.length})</button>` : `<button class="md-btn md-btn-outlined" disabled>歷史 (0)</button>`}
-                        <button class="md-btn md-btn-text md-btn-error btn-delete-card-action" data-id="${c.id}">刪除</button>
+                        <button class="md-btn md-btn-outlined btn-set-key-action" data-id="${c.id}"><i class="fa-solid fa-key"></i> 設定解答</button>
+                        ${history.length > 0 ? `<button class="md-btn md-btn-outlined btn-view-history-action" data-id="${c.id}"><i class="fa-solid fa-chart-line"></i> ${history.length > 1 ? `歷史 (${history.length})` : '歷史'}</button>` : `<button class="md-btn md-btn-outlined" disabled><i class="fa-solid fa-chart-line"></i> 歷史</button>`}
+                        <button class="md-btn md-btn-text md-btn-error btn-delete-card-action" data-id="${c.id}"><i class="fa-solid fa-trash-can"></i> 刪除</button>
                     </div>
                 </div>
             `;
@@ -157,24 +243,27 @@ function renderHome() {
             };
             input.addEventListener('blur', saveName);
             input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') { e.preventDefault(); input.blur(); } 
+                if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
                 else if (e.key === 'Escape') { e.preventDefault(); input.value = input.dataset.original || label.textContent; closeEditor(); }
             });
         });
 
         document.querySelectorAll('.btn-start-test-action').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const cardId = btn.dataset.id;
-                if (store.getPausedTest(cardId) && !confirm('您有一個未完成的測驗進度。開啟新測驗將會覆蓋它。確定要開啟新測驗嗎？')) return;
+                if (store.getPausedTest(cardId)) {
+                    const shouldStart = await showAppConfirm('您有一個未完成的測驗進度。開啟新測驗將會覆蓋它。確定要開啟新測驗嗎？', '開啟新測驗', 'danger');
+                    if (!shouldStart) return;
+                }
                 store.clearPausedTest(cardId);
-                navigateTo('test', {cardId: cardId, mode: 'test'});
+                navigateTo('test', { cardId: cardId, mode: 'test' });
             });
         });
         document.querySelectorAll('.btn-resume-test-action').forEach(btn => {
-            btn.addEventListener('click', () => navigateTo('test', {cardId: btn.dataset.id, mode: 'test', isResume: true}));
+            btn.addEventListener('click', () => navigateTo('test', { cardId: btn.dataset.id, mode: 'test', isResume: true }));
         });
         document.querySelectorAll('.btn-set-key-action').forEach(btn => {
-            btn.addEventListener('click', () => navigateTo('test', {cardId: btn.dataset.id, mode: 'set_key'}));
+            btn.addEventListener('click', () => navigateTo('test', { cardId: btn.dataset.id, mode: 'set_key' }));
         });
         document.querySelectorAll('.btn-view-history-action').forEach(btn => {
             btn.addEventListener('click', () => window.viewHistory(btn.dataset.id));
@@ -186,7 +275,7 @@ function renderHome() {
 
     // Bind Top Level Actions
     document.getElementById('btn-goto-create').addEventListener('click', () => navigateTo('create'));
-    
+
     // Export Logic
     document.getElementById('btn-export-data').addEventListener('click', () => {
         const dataStr = JSON.stringify(store.data, null, 2);
@@ -210,7 +299,7 @@ function renderHome() {
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = event => {
+            reader.onload = async event => {
                 try {
                     const importedData = JSON.parse(event.target.result);
                     if (importedData && importedData.answerCards && importedData.history) {
@@ -218,14 +307,14 @@ function renderHome() {
                         let cardsAdded = 0, historyAdded = 0;
                         const existingCardIds = new Set(store.data.answerCards.map(c => c.id));
                         const existingHistIds = new Set(store.data.history.map(h => h.id));
-                        
+
                         importedData.answerCards.forEach(ic => {
                             if (!existingCardIds.has(ic.id)) {
                                 store.data.answerCards.push(ic);
                                 cardsAdded++;
                             }
                         });
-                        
+
                         importedData.history.forEach(ih => {
                             if (!existingHistIds.has(ih.id)) {
                                 store.data.history.push(ih);
@@ -239,15 +328,15 @@ function renderHome() {
                                 }
                             }
                         });
-                        
+
                         store.saveData();
-                        alert(`資料匯入成功！\\n新增/更新了 ${cardsAdded} 張答案卡, ${historyAdded} 筆歷史紀錄。`);
+                        await showAppAlert(`資料匯入成功！\n新增/更新了 ${cardsAdded} 張答案卡, ${historyAdded} 筆歷史紀錄。`);
                         navigateTo('home');
                     } else {
-                        alert('無效的備份檔案格式！');
+                        await showAppAlert('無效的備份檔案格式！');
                     }
                 } catch (err) {
-                    alert('讀取檔案失敗：' + err.message);
+                    await showAppAlert('讀取檔案失敗：' + err.message);
                 }
             };
             reader.readAsText(file);
@@ -267,6 +356,7 @@ let createWizardState = {
 };
 
 function renderCreate() {
+    document.body.classList.remove('home-page');
     navTitle.textContent = '製作答案卡';
     navActions.innerHTML = `
         <button class="md-btn md-btn-text" id="nav-btn-reset"><i class="fa-solid fa-rotate-right"></i>重新設定</button>
@@ -283,7 +373,7 @@ function renderCreate() {
     const is3 = createWizardState.step === 3;
 
     appContainer.innerHTML = `
-        <div class="md-card">
+        <div class="md-card wizard-shell">
             <div class="wizard-progress">
                 <div class="wizard-step ${is1 ? 'active' : (createWizardState.step > 1 ? 'completed' : '')}" onclick="window.goToStep(1)">1</div>
                 <div class="wizard-step ${is2 ? 'active' : (createWizardState.step > 2 ? 'completed' : '')}" onclick="window.goToStep(2)">2</div>
@@ -302,7 +392,7 @@ function renderCreate() {
     `;
 
     window.goToStep = (targetStep) => {
-        if(targetStep <= createWizardState.step) {
+        if (targetStep <= createWizardState.step) {
             createWizardState.step = targetStep;
             renderCreate();
         }
@@ -350,11 +440,11 @@ function renderWizardBody() {
             <br/>
             <button class="md-btn md-btn-outlined" id="btn-add-section" style="margin-bottom: 16px;">+ 新增區塊</button>
             <div id="sections-container"></div>
-            <div style="margin-top:24px; font-size:1.2rem; font-weight:bold; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 16px;">
+            <div class="section-total-bar" style="font-size:1.2rem; font-weight:bold;">
                 總題數: <span id="lbl-total-q" style="color: var(--md-primary);">0</span> 題
             </div>
         `;
-        
+
         const sectionsContainer = document.getElementById('sections-container');
         const totalLbl = document.getElementById('lbl-total-q');
 
@@ -363,11 +453,11 @@ function renderWizardBody() {
             let total = 0;
             let html = '';
             let globalPartId = 1;
-            
+
             createWizardState.sections.forEach((sec, sIdx) => {
                 let secTotal = 0;
                 let partsHtml = '';
-                
+
                 sec.parts.forEach((p, pIdx) => {
                     p.id = globalPartId++;
                     p.start = currentStart;
@@ -386,10 +476,10 @@ function renderWizardBody() {
                     `;
                     currentStart = p.end + 1;
                 });
-                
+
                 html += `
-                    <div class="md-card" style="padding: 16px; margin-bottom: 16px; border-left: 4px solid var(--md-primary);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div class="section-edit-card">
+                        <div class="section-edit-header">
                             <input type="text" class="md-input sec-name-inp" data-sidx="${sIdx}" value="${sec.name}" placeholder="區塊名稱 (例如: Listening)" style="max-width: 250px;">
                             ${createWizardState.sections.length > 1 ? `<button class="md-btn md-btn-text md-btn-error btn-remove-sec" data-sidx="${sIdx}">刪除區塊</button>` : ''}
                         </div>
@@ -402,7 +492,7 @@ function renderWizardBody() {
                     </div>
                 `;
             });
-            
+
             sectionsContainer.innerHTML = html;
             totalLbl.textContent = total;
 
@@ -417,7 +507,7 @@ function renderWizardBody() {
                     const sIdx = parseInt(e.target.dataset.sidx);
                     const pIdx = parseInt(e.target.dataset.pidx);
                     let val = parseInt(e.target.value) || 1;
-                    if(val < 1) val = 1;
+                    if (val < 1) val = 1;
                     createWizardState.sections[sIdx].parts[pIdx].count = val;
                     updateSectionsUI();
                 });
@@ -439,7 +529,7 @@ function renderWizardBody() {
                     updateSectionsUI();
                 });
             });
-            
+
             document.querySelectorAll('.btn-remove-sec').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const sIdx = parseInt(e.currentTarget.dataset.sidx);
@@ -461,7 +551,7 @@ function renderWizardBody() {
         body.innerHTML = `
             <h2>Step 3: 確認與儲存</h2>
             <br/>
-            <div class="md-card" style="background: rgba(0,0,0,0.02); margin-bottom:16px;">
+            <div class="summary-panel">
                 <p><strong>選項數量：</strong> ${createWizardState.optionsCount}</p>
                 <p><strong>區塊數量：</strong> ${createWizardState.sections.length}</p>
                 <p><strong>總題數：</strong> ${totalQ}</p>
@@ -480,7 +570,7 @@ function renderWizardBody() {
 function saveAnswerCard() {
     const totalQuestions = createWizardState.sections.reduce((sum, s) => sum + s.parts.reduce((pSum, p) => pSum + p.count, 0), 0);
     const name = createWizardState.name.trim() || '未命名答案卡';
-    
+
     store.addCard({
         name,
         optionsCount: createWizardState.optionsCount,
@@ -495,84 +585,92 @@ function saveAnswerCard() {
 
 // renderPreview is removed as it's merged into renderHome
 
-    window.viewHistory = (cardId) => {
-        const modalContainer = document.getElementById('modal-container');
-        const card = store.getCardById(cardId);
-        if (!card) return;
-        let sortDirection = 'asc';
-        const formatDuration = (totalSeconds) => {
-            if (typeof totalSeconds !== 'number' || totalSeconds < 0) return '未記錄';
-            const h = Math.floor(totalSeconds / 3600);
-            const m = Math.floor((totalSeconds % 3600) / 60);
-            const s = totalSeconds % 60;
-            if (h > 0) return `${h}小時 ${String(m).padStart(2, '0')}分 ${String(s).padStart(2, '0')}秒`;
-            return `${m}分 ${String(s).padStart(2, '0')}秒`;
-        };
-        const getStableHistoryNumberMap = () => {
-            const ordered = store.getHistoryByCardId(cardId).sort((a, b) => {
-                if (a.date !== b.date) return a.date - b.date;
-                return a.id.localeCompare(b.id);
-            });
-            const numberMap = {};
-            ordered.forEach((record, idx) => {
-                numberMap[record.id] = idx + 1;
-            });
-            return numberMap;
-        };
-        const formatDate = (timestamp) => {
-            const d = new Date(timestamp);
-            return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-        };
+window.viewHistory = (cardId) => {
+    const modalContainer = document.getElementById('modal-container');
+    const card = store.getCardById(cardId);
+    if (!card) return;
+    let sortDirection = 'asc';
+    const formatDuration = (totalSeconds) => {
+        if (typeof totalSeconds !== 'number' || totalSeconds < 0) return '未記錄';
+        const h = Math.floor(totalSeconds / 3600);
+        const m = Math.floor((totalSeconds % 3600) / 60);
+        const s = totalSeconds % 60;
+        if (h > 0) return `${h}小時 ${String(m).padStart(2, '0')}分 ${String(s).padStart(2, '0')}秒`;
+        return `${m}分 ${String(s).padStart(2, '0')}秒`;
+    };
+    const formatScore = (record) => {
+        if (record.score === null) return '未設定答案';
+        if (typeof record.score === 'object') {
+            return `${record.score.totalCorrect} / ${record.score.totalQuestions}`;
+        }
+        return `${record.score} / ${card.totalQuestions}`;
+    };
+    const getStableHistoryNumberMap = () => {
+        const ordered = store.getHistoryByCardId(cardId).sort((a, b) => {
+            if (a.date !== b.date) return a.date - b.date;
+            return a.id.localeCompare(b.id);
+        });
+        const numberMap = {};
+        ordered.forEach((record, idx) => {
+            numberMap[record.id] = idx + 1;
+        });
+        return numberMap;
+    };
+    const formatDate = (timestamp) => {
+        const d = new Date(timestamp);
+        return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    };
 
-        const closeHistoryModal = () => {
-            modalContainer.classList.add('hidden');
-            modalContainer.innerHTML = '';
-        };
+    const closeHistoryModal = () => {
+        modalContainer.classList.add('hidden');
+        modalContainer.innerHTML = '';
+    };
 
-        const bindModalActions = () => {
-            const closeBtn = document.getElementById('btn-close-history-modal');
-            if (closeBtn) closeBtn.addEventListener('click', closeHistoryModal);
+    const bindModalActions = () => {
+        const closeBtn = document.getElementById('btn-close-history-modal');
+        if (closeBtn) closeBtn.addEventListener('click', closeHistoryModal);
 
-            modalContainer.querySelectorAll('.history-item-open').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const targetHistoryId = btn.dataset.historyId;
-                    closeHistoryModal();
-                    navigateTo('test', {cardId: cardId, mode: 'review', historyId: targetHistoryId});
-                });
-            });
-
-            modalContainer.querySelectorAll('.history-item-delete').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const targetHistoryId = btn.dataset.historyId;
-                    const testName = btn.dataset.testName || '這筆測驗';
-                    if (!confirm(`確定要刪除「${testName}」嗎？此動作無法復原。`)) return;
-                    store.deleteHistoryById(targetHistoryId);
-                    renderHistoryModal();
-                });
-            });
-
-            modalContainer.addEventListener('click', (e) => {
-                if (e.target === modalContainer) closeHistoryModal();
-            }, { once: true });
-        };
-
-        const renderHistoryModal = () => {
-            const hist = store.getHistoryByCardId(cardId);
-            const stableNumberMap = getStableHistoryNumberMap();
-            const sortedHist = [...hist].sort((a, b) => sortDirection === 'asc' ? a.date - b.date : b.date - a.date);
-            if (!sortedHist.length) {
+        modalContainer.querySelectorAll('.history-item-open').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetHistoryId = btn.dataset.historyId;
                 closeHistoryModal();
-                renderHome();
-                return;
-            }
+                navigateTo('test', { cardId: cardId, mode: 'review', historyId: targetHistoryId });
+            });
+        });
 
-            let listHtml = '';
-            sortedHist.forEach((record) => {
-                const scoreText = record.score !== null ? `${record.score} / ${card.totalQuestions}` : '未設定答案';
-                const stableNo = stableNumberMap[record.id] || '-';
-                const durationText = formatDuration(record.durationSeconds);
-                listHtml += `
+        modalContainer.querySelectorAll('.history-item-delete').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const targetHistoryId = btn.dataset.historyId;
+                const testName = btn.dataset.testName || '這筆測驗';
+                const shouldDelete = await showAppConfirm(`確定要刪除「${testName}」嗎？此動作無法復原。`, '刪除歷史', 'danger');
+                if (!shouldDelete) return;
+                store.deleteHistoryById(targetHistoryId);
+                renderHistoryModal();
+            });
+        });
+
+        modalContainer.addEventListener('click', (e) => {
+            if (e.target === modalContainer) closeHistoryModal();
+        }, { once: true });
+    };
+
+    const renderHistoryModal = () => {
+        const hist = store.getHistoryByCardId(cardId);
+        const stableNumberMap = getStableHistoryNumberMap();
+        const sortedHist = [...hist].sort((a, b) => sortDirection === 'asc' ? a.date - b.date : b.date - a.date);
+        if (!sortedHist.length) {
+            closeHistoryModal();
+            renderHome();
+            return;
+        }
+
+        let listHtml = '';
+        sortedHist.forEach((record) => {
+            const scoreText = formatScore(record);
+            const stableNo = stableNumberMap[record.id] || '-';
+            const durationText = formatDuration(record.durationSeconds);
+            listHtml += `
                     <div class="history-item-row">
                         <button class="history-item-btn history-item-open" data-history-id="${record.id}">
                             <div class="history-item-main">
@@ -585,9 +683,9 @@ function saveAnswerCard() {
                         <button class="md-btn md-btn-text md-btn-error history-item-delete" data-history-id="${record.id}" data-test-name="${record.testName}" title="刪除此筆歷史">刪除</button>
                     </div>
                 `;
-            });
+        });
 
-            modalContainer.innerHTML = `
+        modalContainer.innerHTML = `
                 <div class="modal-dialog" role="dialog" aria-modal="true" aria-label="歷史測驗清單">
                     <div class="modal-header">
                         <h3>歷史測驗清單</h3>
@@ -601,26 +699,26 @@ function saveAnswerCard() {
                     <div class="history-list">${listHtml}</div>
                 </div>
             `;
-            modalContainer.classList.remove('hidden');
-            bindModalActions();
-            const sortBtn = document.getElementById('btn-toggle-history-sort');
-            if (sortBtn) {
-                sortBtn.addEventListener('click', () => {
-                    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-                    renderHistoryModal();
-                });
-            }
-        };
-
-        renderHistoryModal();
-    };
-
-    window.deleteCard = (id) => {
-        if(confirm('確定要刪除這張答案卡與所有的測驗歷史紀錄嗎？這個動作無法復原。')) {
-            store.deleteCard(id);
-            renderHome();
+        modalContainer.classList.remove('hidden');
+        bindModalActions();
+        const sortBtn = document.getElementById('btn-toggle-history-sort');
+        if (sortBtn) {
+            sortBtn.addEventListener('click', () => {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                renderHistoryModal();
+            });
         }
     };
+
+    renderHistoryModal();
+};
+
+window.deleteCard = async (id) => {
+    const shouldDelete = await showAppConfirm('確定要刪除這張答案卡與所有的測驗歷史紀錄嗎？這個動作無法復原。', '刪除答案卡', 'danger');
+    if (!shouldDelete) return;
+    store.deleteCard(id);
+    renderHome();
+};
 
 // ========== 4. Test Page (Multi-Mode) ==========
 let testState = {
@@ -635,10 +733,11 @@ let testState = {
 const optionLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 function renderTest(params) {
+    document.body.classList.remove('home-page');
     const cardId = params.cardId || params;
     const mode = params.mode || 'test'; // 'test', 'set_key', 'review'
     const historyId = params.historyId;
-    
+
     const card = store.getCardById(cardId);
     if (!card) return navigateTo('home');
     const formatDuration = (totalSeconds) => {
@@ -649,20 +748,20 @@ function renderTest(params) {
         if (h > 0) return `${h}小時 ${String(m).padStart(2, '0')}分 ${String(s).padStart(2, '0')}秒`;
         return `${m}分 ${String(s).padStart(2, '0')}秒`;
     };
-    
+
     let historyRecord = null;
     let reviewHistoryOptions = [];
     if (mode === 'review' && historyId) {
         reviewHistoryOptions = store.getHistoryByCardId(cardId).sort((a, b) => a.date - b.date);
         historyRecord = reviewHistoryOptions.find(h => h.id === historyId);
-        if(!historyRecord) return navigateTo('home');
+        if (!historyRecord) return navigateTo('home');
     }
 
     const hasAnswerKey = !!(card.answerKey && Object.keys(card.answerKey).length > 0);
 
     // Reset state
     testState = { timerInterval: null, secondsElapsed: 0, answers: {}, flagged: {}, isStarted: false, isPaused: false };
-    
+
     if (mode === 'test' && params.isResume) {
         const pausedData = store.getPausedTest(cardId);
         if (pausedData) {
@@ -671,20 +770,23 @@ function renderTest(params) {
             testState.secondsElapsed = pausedData.secondsElapsed || 0;
             // The user will need to click "Start" again to unpause
         }
-    } else if(mode === 'set_key' && card.answerKey) {
-        testState.answers = {...card.answerKey};
+    } else if (mode === 'set_key' && card.answerKey) {
+        testState.answers = { ...card.answerKey };
     }
 
     // Nav setup
-    navTitle.textContent = mode === 'test' ? '模擬考試: ' + card.name : 
-                           mode === 'set_key' ? '設定答案: ' + card.name : 
-                           '測驗歷史檢討: ' + card.name;
-    navActions.innerHTML = `<button class="md-btn md-btn-text" id="nav-btn-abandon"><i class="fa-solid ${mode==='test'?'fa-xmark':'fa-arrow-left'}"></i>${mode==='test'?'放棄測驗':'返回'}</button>`;
-    
-    document.getElementById('nav-btn-abandon').addEventListener('click', () => {
-        if(mode === 'test' && !confirm('確定要放棄考試嗎？進度將不會儲存。')) return;
-        if(mode === 'test') store.clearPausedTest(cardId); // Cancel test should clear resume state
-        if(testState.timerInterval) clearInterval(testState.timerInterval);
+    navTitle.textContent = mode === 'test' ? '模擬考試: ' + card.name :
+        mode === 'set_key' ? '設定答案: ' + card.name :
+            '測驗歷史檢討: ' + card.name;
+    navActions.innerHTML = `<button class="md-btn md-btn-text" id="nav-btn-abandon"><i class="fa-solid ${mode === 'test' ? 'fa-xmark' : 'fa-arrow-left'}"></i>${mode === 'test' ? '放棄測驗' : '返回'}</button>`;
+
+    document.getElementById('nav-btn-abandon').addEventListener('click', async () => {
+        if (mode === 'test') {
+            const shouldAbandon = await showAppConfirm('確定要放棄考試嗎？進度將不會儲存。', '放棄測驗', 'danger');
+            if (!shouldAbandon) return;
+        }
+        if (mode === 'test') store.clearPausedTest(cardId); // Cancel test should clear resume state
+        if (testState.timerInterval) clearInterval(testState.timerInterval);
         navigateTo('home');
     });
 
@@ -699,17 +801,17 @@ function renderTest(params) {
                     <div class="part-separator">Part ${part.id} (Q${part.start} - Q${part.end})</div>
                     <div class="questions-grid">
             `;
-            
-            for(let q = part.start; q <= part.end; q++) {
+
+            for (let q = part.start; q <= part.end; q++) {
                 let bubblesHtml = '';
                 const isReview = mode === 'review';
                 const userAns = isReview ? historyRecord.answers[q] : null;
                 const correctAns = isReview ? (card.answerKey ? card.answerKey[q] : null) : null;
-                
-                for(let opt = 0; opt < card.optionsCount; opt++) {
+
+                for (let opt = 0; opt < card.optionsCount; opt++) {
                     const letter = optionLetters[opt] || '?';
                     let classes = 'bubble';
-                    
+
                     if (mode === 'test') {
                         classes += ' locked';
                     } else if (mode === 'set_key') {
@@ -725,14 +827,14 @@ function renderTest(params) {
                         } else if (!userAns && correctAns === letter) {
                             classes += ' review-key';
                         } else if (!correctAns && userAns === letter) {
-                             // selected but no key available
-                             classes += ' selected';
+                            // selected but no key available
+                            classes += ' selected';
                         }
                     }
-                    
+
                     bubblesHtml += `<div class="${classes}" data-q="${q}" data-val="${letter}">${letter}</div>`;
                 }
-                
+
                 partsHtml += `
                     <div class="question-row ${testState.flagged[q] ? 'flagged' : ''}">
                         <div class="q-num">${q}.</div>
@@ -751,7 +853,8 @@ function renderTest(params) {
         headerHtml = `
             <div class="test-entry-header">
                 <div class="test-entry-name">
-                    <input type="text" id="test-instance-name" class="md-input" style="margin:0;" placeholder="模擬考試">
+                    <button type="button" class="test-name-display" id="test-name-display" title="點擊修改測驗名稱">模擬測驗</button>
+                    <input type="text" id="test-instance-name" class="md-input hidden" value="" placeholder="模擬測驗" aria-label="測驗名稱">
                 </div>
                 <div class="test-entry-tools">
                     <button class="md-btn md-btn-outlined" id="btn-live-feedback" ${hasAnswerKey ? '' : 'disabled'}>即時對答: 關</button>
@@ -788,33 +891,46 @@ function renderTest(params) {
     } else if (mode === 'review') {
         const reviewOptionsHtml = reviewHistoryOptions.map((h, idx) => {
             const d = new Date(h.date);
-            const dateLabel = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+            const dateLabel = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
             return `<option value="${h.id}" ${h.id === historyRecord.id ? 'selected' : ''}>${idx + 1}. ${h.testName} (${dateLabel})</option>`;
         }).join('');
 
         let scoreDetailsHtml = '';
-        if (historyRecord.score !== null && typeof historyRecord.score === 'object') {
-            const { totalCorrect, totalQuestions, sectionsScore, partsScore } = historyRecord.score;
-            scoreDetailsHtml += `<p style="font-size:1.35rem; color:var(--md-primary); font-weight:700; margin: 8px 0;">總分: ${totalCorrect} / ${totalQuestions}</p>`;
-            scoreDetailsHtml += `<div style="display: flex; flex-direction: column; gap: 16px; margin-top: 12px; text-align: left;">`;
-            
+        const detailedScore = typeof historyRecord.score === 'object' && historyRecord.score !== null
+            ? historyRecord.score
+            : store.calculateScore(card.id, historyRecord.answers);
+
+        if (detailedScore !== null && typeof detailedScore === 'object') {
+            const { totalCorrect, totalQuestions, sectionsScore, partsScore } = detailedScore;
+            const scorePercent = totalQuestions ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+            scoreDetailsHtml += `
+                <div class="score-summary">
+                    <div>
+                        <div class="score-summary-label">總分</div>
+                        <div class="score-summary-value">${totalCorrect} / ${totalQuestions}</div>
+                    </div>
+                    <div class="score-summary-value">${scorePercent}%</div>
+                </div>
+            `;
+            scoreDetailsHtml += `<div class="score-breakdown">`;
+
             card.sections.forEach(sec => {
                 const secScore = sectionsScore[sec.id];
                 if (!secScore) return;
                 scoreDetailsHtml += `
-                <div style="background: var(--md-surface); box-shadow: var(--elevation-1); padding: 12px 16px; border-radius: 3px; border-left: 4px solid var(--md-primary);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-weight: 700; font-size: 1rem; color: var(--text-primary);">${sec.name}</span>
-                        <span style="font-weight: 700; font-size: 1rem; color: var(--md-primary-variant);">${secScore.correct} / ${secScore.total}</span>
+                <div class="score-section-card">
+                    <div class="score-section-head">
+                        <span class="score-section-name">${sec.name}</span>
+                        <span class="score-section-value">${secScore.correct} / ${secScore.total}</span>
                     </div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <div class="score-parts">
                 `;
                 sec.parts.forEach(p => {
                     const pScore = partsScore[p.id];
                     if (!pScore) return;
                     scoreDetailsHtml += `
-                        <div style="background: rgba(0,0,0,0.04); padding: 4px 8px; border-radius: 3px; font-size: 0.85rem; color: var(--text-secondary);">
-                            Part ${p.id}: <span style="color: var(--md-primary); font-weight: bold;">${pScore.correct} / ${pScore.total}</span>
+                        <div class="score-part-pill">
+                            Part ${p.id}: <strong>${pScore.correct} / ${pScore.total}</strong>
                         </div>
                     `;
                 });
@@ -823,12 +939,20 @@ function renderTest(params) {
             scoreDetailsHtml += `</div>`;
         } else {
             const sVal = typeof historyRecord.score === 'number' ? historyRecord.score : (historyRecord.score?.totalCorrect ?? '未設定答案');
-            scoreDetailsHtml += `<p style="font-size:1.2rem; color:var(--md-primary); font-weight:700;">成績: ${sVal} / ${card.totalQuestions}</p>`;
+            scoreDetailsHtml += `
+                <div class="score-summary">
+                    <div>
+                        <div class="score-summary-label">成績</div>
+                        <div class="score-summary-value">${sVal} / ${card.totalQuestions}</div>
+                    </div>
+                </div>
+            `;
         }
 
         headerHtml = `
             <div class="review-header" style="flex-direction: column;">
-                <div style="width: 100%; text-align:center; max-width: 600px;">
+                <img class="review-rabbit-accent" src="images/rabbit/happy.png" alt="" aria-hidden="true">
+                <div style="width: 100%; text-align:center; max-width: 760px;">
                     <div style="margin-bottom:16px;">
                         <select id="review-history-select" class="md-input" style="min-width:280px; max-width:100%;">
                             ${reviewOptionsHtml}
@@ -847,7 +971,7 @@ function renderTest(params) {
     // Mini-map logic & Vertical Flowing Chain
     let miniMapHtml = '';
     let verticalChainHtml = '';
-    
+
     if (mode === 'test') {
         let gridHtml = '';
         let chainHtml = '';
@@ -864,7 +988,7 @@ function renderTest(params) {
                 <div class="minimap-grid">${gridHtml}</div>
             </div>
         `;
-        
+
         verticalChainHtml = `
             <aside class="vertical-chain-container" id="vertical-chain-container" aria-label="題號鏈導覽">
                 <div class="vertical-chain-track" id="vertical-chain-track"></div>
@@ -901,7 +1025,7 @@ function renderTest(params) {
     ` : '';
 
     appContainer.innerHTML = headerHtml + `
-        <div class="md-card test-container ${mode==='test'?'test-locked':''}" id="test-card-container">
+        <div class="md-card test-container ${mode === 'test' ? 'test-locked' : ''}" id="test-card-container">
             ${testBodyHtml}
         </div>
         ${mode === 'test' ? `
@@ -921,9 +1045,9 @@ function renderTest(params) {
     const updateProgress = () => {
         const prog = document.getElementById('test-progress-text');
         if (!prog) return;
-        if(mode==='test') prog.textContent = `完成度: ${Object.keys(testState.answers).length} / ${card.totalQuestions}`;
-        if(mode==='set_key') prog.textContent = `答案：${Object.keys(testState.answers).length} / ${card.totalQuestions}`;
-        
+        if (mode === 'test') prog.textContent = `完成度: ${Object.keys(testState.answers).length} / ${card.totalQuestions}`;
+        if (mode === 'set_key') prog.textContent = `答案：${Object.keys(testState.answers).length} / ${card.totalQuestions}`;
+
         // Update minimap & vertical chain
         if (mode === 'test') {
             document.querySelectorAll('.minimap-node').forEach(node => {
@@ -938,7 +1062,7 @@ function renderTest(params) {
                 node.classList.remove('answered', 'flagged-node', 'connected-answered');
                 if (testState.answers[q]) node.classList.add('answered');
                 if (testState.flagged[q]) node.classList.add('flagged-node');
-                
+
                 if (testState.answers[q] && testState.answers[nextQ]) {
                     node.classList.add('connected-answered');
                 }
@@ -1003,10 +1127,10 @@ function renderTest(params) {
 
     // Bubble Click (Ripple + Select)
     allBubbles.forEach(bubble => {
-        bubble.addEventListener('click', function(e) {
+        bubble.addEventListener('click', function (e) {
             if (mode === 'test' && !testState.isStarted) return;
             if (mode === 'review') return; // Read Only
-            
+
             // Ripple Effect
             const circle = document.createElement('span');
             const diameter = Math.max(this.clientWidth, this.clientHeight);
@@ -1015,19 +1139,19 @@ function renderTest(params) {
             circle.style.left = `${e.clientX - this.getBoundingClientRect().left - radius}px`;
             circle.style.top = `${e.clientY - this.getBoundingClientRect().top - radius}px`;
             circle.classList.add('ripple');
-            
+
             const rippleBase = this.querySelector('.ripple');
-            if(rippleBase) rippleBase.remove();
+            if (rippleBase) rippleBase.remove();
             this.appendChild(circle);
-            
+
             // Selection Logic
             const q = this.dataset.q;
             const val = this.dataset.val;
-            
+
             this.parentElement.querySelectorAll('.bubble').forEach(b => b.classList.remove('selected'));
             this.classList.add('selected');
             testState.answers[q] = val;
-            
+
             // Auto-Save
             if (mode === 'test') {
                 store.savePausedTest(cardId, {
@@ -1036,7 +1160,7 @@ function renderTest(params) {
                     secondsElapsed: testState.secondsElapsed
                 });
             }
-            
+
             // Update progress text
             updateProgress();
             if (mode === 'test') applyLiveFeedbackForQuestion(q);
@@ -1046,7 +1170,7 @@ function renderTest(params) {
 
     // Flagging System (Right click)
     document.querySelectorAll('.question-row').forEach(row => {
-        row.addEventListener('contextmenu', function(e) {
+        row.addEventListener('contextmenu', function (e) {
             e.preventDefault(); // Prevent default right-click menu
             if (mode !== 'test' || !testState.isStarted) return;
             const q = this.querySelector('.bubble').dataset.q;
@@ -1075,7 +1199,7 @@ function renderTest(params) {
         const miniMapToggle = document.getElementById('btn-toggle-minimap');
         const miniMapDrawer = document.getElementById('minimap-drawer');
         const miniMapClose = document.getElementById('btn-close-minimap');
-        
+
         if (miniMapToggle && miniMapDrawer) {
             miniMapToggle.addEventListener('click', () => {
                 miniMapDrawer.classList.toggle('hidden');
@@ -1196,20 +1320,22 @@ function renderTest(params) {
         const btnScrollUp = document.getElementById('btn-scroll-up');
         const btnScrollDownLatest = document.getElementById('btn-scroll-down-latest');
         const btnFinish = document.getElementById('btn-finish-test');
+        const testNameDisplay = document.getElementById('test-name-display');
+        const testNameInput = document.getElementById('test-instance-name');
         const timerDisplay = document.getElementById('test-timer-display');
         const hasTimeLimit = typeof card.timeLimitMinutes === 'number' && card.timeLimitMinutes > 0;
         const timeLimitSeconds = hasTimeLimit ? card.timeLimitMinutes * 60 : null;
         let hasSubmitted = false;
 
-        const submitTest = (isAutoSubmit = false) => {
+        const submitTest = async (isAutoSubmit = false) => {
             if (hasSubmitted) return;
             hasSubmitted = true;
             clearInterval(testState.timerInterval);
-            
+
             // Clear auto-save
             store.clearPausedTest(cardId);
-            
-            const nameInp = document.getElementById('test-instance-name').value.trim();
+
+            const nameInp = testNameInput ? testNameInput.value.trim() : '';
             const d = new Date();
             const defaultName = '模擬測驗';
 
@@ -1220,7 +1346,7 @@ function renderTest(params) {
                 answers: testState.answers,
                 durationSeconds: testState.secondsElapsed
             });
-            if (isAutoSubmit) alert('時間到，已自動交卷。');
+            if (isAutoSubmit) await showAppAlert('時間到，已自動交卷。');
             navigateTo('home');
         };
 
@@ -1243,6 +1369,35 @@ function renderTest(params) {
             btnLiveFeedback.textContent = `即時對答: ${isLiveFeedbackEnabled ? '開' : '關'}`;
             btnLiveFeedback.classList.toggle('btn-live-feedback-on', isLiveFeedbackEnabled);
         };
+
+        if (testNameDisplay && testNameInput) {
+            const defaultTestName = testNameDisplay.textContent;
+            const closeNameEditor = (shouldSave = true) => {
+                const nextName = shouldSave ? testNameInput.value.trim() : (testNameDisplay.textContent === defaultTestName ? '' : testNameDisplay.textContent);
+                testNameInput.value = nextName;
+                testNameDisplay.textContent = nextName || defaultTestName;
+                testNameInput.classList.add('hidden');
+                testNameDisplay.classList.remove('hidden');
+            };
+
+            testNameDisplay.addEventListener('click', () => {
+                testNameInput.value = testNameDisplay.textContent === defaultTestName ? '' : testNameDisplay.textContent;
+                testNameDisplay.classList.add('hidden');
+                testNameInput.classList.remove('hidden');
+                testNameInput.focus();
+                testNameInput.select();
+            });
+            testNameInput.addEventListener('blur', () => closeNameEditor(true));
+            testNameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    testNameInput.blur();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeNameEditor(false);
+                }
+            });
+        }
 
         const getLatestAnsweredQuestion = () => {
             const answered = Object.keys(testState.answers).map(Number).filter(n => !Number.isNaN(n));
@@ -1344,12 +1499,12 @@ function renderTest(params) {
             startTimer();
         });
 
-        btnFinish.addEventListener('click', () => {
+        btnFinish.addEventListener('click', async () => {
             const ansCount = Object.keys(testState.answers).length;
             const msg = ansCount < card.totalQuestions ? `你只回答了 ${ansCount} / ${card.totalQuestions} 題，確定要交卷嗎？` : '確定要交卷完成測驗嗎？';
-            if(confirm(msg)) {
-                submitTest(false);
-            }
+            const shouldSubmit = await showAppConfirm(msg, '交卷確認');
+            if (!shouldSubmit) return;
+            await submitTest(false);
         });
     }
 
@@ -1391,7 +1546,7 @@ function renderTest(params) {
                 if (e.target === modalContainer) closeModal();
             }, { once: true });
 
-            document.getElementById('btn-confirm-paste-modal').addEventListener('click', () => {
+            document.getElementById('btn-confirm-paste-modal').addEventListener('click', async () => {
                 const raw = textarea.value || '';
                 const lines = raw.split(/\r?\n/);
                 let appliedCount = 0;
@@ -1425,36 +1580,37 @@ function renderTest(params) {
                 applyAnswersToBubbles();
                 closeModal();
                 if (invalidCount > 0) {
-                    alert(`已匯入 ${appliedCount} 筆答案，略過 ${invalidCount} 筆格式或內容不正確的資料。`);
+                    await showAppAlert(`已匯入 ${appliedCount} 筆答案，略過 ${invalidCount} 筆格式或內容不正確的資料。`);
                 } else {
-                    alert(`已匯入 ${appliedCount} 筆答案。`);
+                    await showAppAlert(`已匯入 ${appliedCount} 筆答案。`);
                 }
             });
         };
 
         btnPaste.addEventListener('click', openPasteModal);
-        btnClear.addEventListener('click', () => {
-            if (!confirm('確定要清空目前所有已設定的答案嗎？')) return;
+        btnClear.addEventListener('click', async () => {
+            const shouldClear = await showAppConfirm('確定要清空目前所有已設定的答案嗎？', '清空答案', 'danger');
+            if (!shouldClear) return;
             testState.answers = {};
             applyAnswersToBubbles();
         });
 
-        btnSave.addEventListener('click', () => {
-             const timeLimitInput = document.getElementById('inp-time-limit-minutes');
-             const rawValue = timeLimitInput ? timeLimitInput.value.trim() : '';
-             let timeLimitMinutes = null;
-             if (rawValue !== '') {
+        btnSave.addEventListener('click', async () => {
+            const timeLimitInput = document.getElementById('inp-time-limit-minutes');
+            const rawValue = timeLimitInput ? timeLimitInput.value.trim() : '';
+            let timeLimitMinutes = null;
+            if (rawValue !== '') {
                 const parsed = parseInt(rawValue, 10);
                 if (!Number.isInteger(parsed) || parsed < 1) {
-                    alert('考試時間請輸入正整數分鐘，或留空。');
+                    await showAppAlert('考試時間請輸入正整數分鐘，或留空。');
                     if (timeLimitInput) timeLimitInput.focus();
                     return;
                 }
                 timeLimitMinutes = parsed;
-             }
-             store.updateAnswerKey(card.id, testState.answers, timeLimitMinutes);
-             alert('答案設定成功！過往的測驗歷史已重新計算分數。');
-             navigateTo('home');
+            }
+            store.updateAnswerKey(card.id, testState.answers, timeLimitMinutes);
+            await showAppAlert('答案設定成功！過往的測驗歷史已重新計算分數。');
+            navigateTo('home');
         });
     }
 

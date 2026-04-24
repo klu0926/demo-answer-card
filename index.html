@@ -1,27 +1,35 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>答案卡</title>
-    
-    <!-- PWA / Favicon -->
-    <link rel="apple-touch-icon" sizes="180x180" href="public/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="public/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="public/favicon-16x16.png">
-    <link rel="manifest" href="public/site.webmanifest">
-    <link rel="shortcut icon" href="public/favicon.ico">
-    <meta name="theme-color" content="#3f51b5">
 
-    <!-- Google Fonts: Outfit, Playfair Display, Noto Sans TC, Noto Serif TC -->
+    <!-- Favicon (simple + reliable) -->
+    <link rel="icon" href="/public/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/public/favicon.ico">
+
+    <!-- Optional (only if you KEEP files in public folder) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/public/apple-touch-icon.png">
+    <link rel="manifest" href="/public/site.webmanifest">
+
+    <meta name="theme-color" content="#2563eb">
+
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700&family=Playfair+Display:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700&family=Playfair+Display:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&display=swap"
+        rel="stylesheet">
 
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Styles -->
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <!-- 頂部導覽列 -->
     <header class="app-bar">
@@ -37,8 +45,13 @@
                 <nav id="navbar-actions">
                     <!-- 動態生成的導覽列按鈕放這裡 -->
                 </nav>
-                <button class="md-btn md-btn-text" id="theme-toggle" title="切換深色模式" style="padding: 0; min-width: 44px; min-height: 44px; border-radius: 3px;">
-                    <i class="fa-solid fa-moon" id="theme-icon"></i>
+                <button class="theme-toggle" id="theme-toggle" type="button" title="切換深色模式" aria-label="切換深色模式"
+                    aria-pressed="false">
+                    <span class="theme-toggle-track" aria-hidden="true">
+                        <i class="fa-solid fa-sun theme-toggle-icon theme-toggle-sun"></i>
+                        <i class="fa-solid fa-moon theme-toggle-icon theme-toggle-moon"></i>
+                        <span class="theme-toggle-thumb"></span>
+                    </span>
                 </button>
             </div>
         </div>
@@ -55,6 +68,5 @@
     <script src="store.js"></script>
     <script src="app.js"></script>
 </body>
+
 </html>
-
-

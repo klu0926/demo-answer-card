@@ -7,12 +7,24 @@ class Store {
 
     loadData() {
         const defaultData = {
-            answerCards: [], // { id, name, optionsCount, parts: [{partId, start, end, count}], totalQuestions, answerKey: null }
-            history: [] // { id, cardId, testName, date, answers: {questionId: selectedOption}, score: null }
+            answerCards: [], 
+            history: [],
+            pausedTests: {} 
         };
         try {
             const stored = localStorage.getItem(STORE_KEY);
-            return stored ? JSON.parse(stored) : defaultData;
+            const parsed = stored ? JSON.parse(stored) : defaultData;
+            // Migration for older data
+            if (parsed.answerCards) {
+                parsed.answerCards.forEach(c => {
+                    if (c.parts && !c.sections) {
+                        c.sections = [{ id: 1, name: "預設區塊", parts: c.parts }];
+                        delete c.parts;
+                    }
+                });
+            }
+            if (!parsed.pausedTests) parsed.pausedTests = {};
+            return parsed;
         } catch (e) {
             console.error("Local storage error:", e);
             return defaultData;
@@ -90,16 +102,34 @@ class Store {
 
     calculateScore(cardId, answers) {
         const card = this.getCardById(cardId);
-        if (!card || !card.answerKey) return null; // Can't grade without key
+        if (!card || !card.answerKey) return null;
         
         let correctCount = 0;
-        for (let q = 1; q <= card.totalQuestions; q++) {
-            const qStr = q.toString();
-            if (answers[qStr] && card.answerKey[qStr] && answers[qStr] === card.answerKey[qStr]) {
-                correctCount++;
-            }
-        }
-        return correctCount;
+        let sectionsScore = {};
+        let partsScore = {};
+
+        card.sections.forEach(sec => {
+            sectionsScore[sec.id] = { name: sec.name, correct: 0, total: 0 };
+            sec.parts.forEach(p => {
+                partsScore[p.id] = { correct: 0, total: p.count };
+                sectionsScore[sec.id].total += p.count;
+                for (let q = p.start; q <= p.end; q++) {
+                    const qStr = q.toString();
+                    if (answers[qStr] && card.answerKey[qStr] && answers[qStr] === card.answerKey[qStr]) {
+                        correctCount++;
+                        sectionsScore[sec.id].correct++;
+                        partsScore[p.id].correct++;
+                    }
+                }
+            });
+        });
+
+        return {
+            totalCorrect: correctCount,
+            totalQuestions: card.totalQuestions,
+            sectionsScore,
+            partsScore
+        };
     }
 
     recalculateHistoryForCard(cardId) {
@@ -107,6 +137,23 @@ class Store {
         historyList.forEach(hist => {
             hist.score = this.calculateScore(cardId, hist.answers);
         });
+    }
+
+    // ========== Auto-Save & Resume ==========
+    savePausedTest(cardId, testStateData) {
+        this.data.pausedTests[cardId] = testStateData;
+        this.saveData();
+    }
+
+    getPausedTest(cardId) {
+        return this.data.pausedTests[cardId] || null;
+    }
+
+    clearPausedTest(cardId) {
+        if (this.data.pausedTests[cardId]) {
+            delete this.data.pausedTests[cardId];
+            this.saveData();
+        }
     }
 }
 

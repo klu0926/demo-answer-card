@@ -1,4 +1,4 @@
-﻿// global store
+// global store
 
 const APP_NAME = '答案卡';
 const LOCAL_TITLE_SUFFIX = ' (LOCAL)';
@@ -13,6 +13,21 @@ const isLocalEnvironment = () => {
 };
 
 document.title = APP_NAME + (isLocalEnvironment() ? LOCAL_TITLE_SUFFIX : '');
+
+// Dark Mode Logic
+const themeToggleBtn = document.getElementById('theme-toggle');
+const themeIcon = document.getElementById('theme-icon');
+const isDarkMode = localStorage.getItem('demo_answer_card_theme') === 'dark';
+if (isDarkMode) {
+    document.body.classList.add('dark-theme');
+    themeIcon.textContent = 'light_mode';
+}
+themeToggleBtn.addEventListener('click', () => {
+    document.body.classList.toggle('dark-theme');
+    const isDark = document.body.classList.contains('dark-theme');
+    localStorage.setItem('demo_answer_card_theme', isDark ? 'dark' : 'light');
+    themeIcon.textContent = isDark ? 'light_mode' : 'dark_mode';
+});
 
 // Simple Router
 function navigateTo(page, params = {}) {
@@ -37,37 +52,219 @@ function navigateTo(page, params = {}) {
     }
 }
 
-// ========== 1. Landing Page (Home) ==========
+// ========== 1. Landing Page (Home / Library) ==========
 function renderHome() {
-    navTitle.textContent = APP_NAME;
+    navTitle.textContent = '我的答案卡';
+    navActions.innerHTML = ''; // Removed 'home' button since this is home
     
-    const html = `
-        <div class="landing-grid">
-            <div class="md-card landing-card" id="btn-goto-create">
-                <span class="material-symbols-outlined">add_circle</span>
-                <h2>製作答案卡</h2>
-                <p>自訂題數、選項數量與各個大題 (Part) 範圍，快速打造你的專屬答題卡。</p>
-            </div>
-            
-            <div class="md-card landing-card" id="btn-goto-preview">
-                <span class="material-symbols-outlined">style</span>
-                <h2>預覽 / 管理答案卡</h2>
-                <p>檢視已建立的答案卡、設定標準答案、開始模擬考與查看歷史成績。</p>
-            </div>
+    // Header Actions Area
+    let headerActionsHtml = `
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px;">
+            <button class="md-btn md-btn-contained" id="btn-goto-create" style="flex: 1; min-width: 140px;">
+                <span class="material-symbols-outlined">add</span> 製作答案卡
+            </button>
+            <button class="md-btn md-btn-outlined" id="btn-export-data" style="flex: 1; min-width: 140px;" title="匯出資料">
+                <span class="material-symbols-outlined">download</span> 匯出
+            </button>
+            <button class="md-btn md-btn-outlined" id="btn-import-data" style="flex: 1; min-width: 140px;" title="匯入資料">
+                <span class="material-symbols-outlined">upload</span> 匯入
+            </button>
         </div>
     `;
-    appContainer.innerHTML = html;
-    
+
+    const cards = store.getCards();
+
+    if (cards.length === 0) {
+        appContainer.innerHTML = headerActionsHtml + `
+            <div class="md-card" style="text-align:center; padding:48px 16px;">
+                <span class="material-symbols-outlined" style="font-size:48px; color:var(--text-disabled); margin-bottom:16px;">inbox</span>
+                <h2>還沒有任何答案卡</h2>
+                <p style="color:var(--text-secondary); margin-bottom:24px;">你還沒有建立過任何答案卡，現在就開始製作一個吧！</p>
+                <button class="md-btn md-btn-contained" id="btn-goto-create-empty">開始製作</button>
+            </div>
+        `;
+        if(document.getElementById('btn-goto-create-empty')) {
+            document.getElementById('btn-goto-create-empty').addEventListener('click', () => navigateTo('create'));
+        }
+    } else {
+        const escapeHtml = (str) => String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+        let html = headerActionsHtml + `<div class="preview-grid">`;
+        cards.forEach(c => {
+            const hasKey = c.answerKey !== null;
+            const history = store.getHistoryByCardId(c.id);
+            const escapedCardName = escapeHtml(c.name);
+            const pausedTest = store.getPausedTest(c.id);
+
+            html += `
+                <div class="md-card preview-item">
+                    <div class="preview-item-header">
+                        <div class="card-name-row">
+                            <h3 class="card-name-label" data-id="${c.id}" title="雙擊可修改名稱">${escapedCardName}</h3>
+                            <input type="text" class="md-input card-name-input hidden" data-id="${c.id}" data-original="${escapedCardName}" value="${escapedCardName}" aria-label="答案卡名稱">
+                        </div>
+                        <div style="color:var(--text-secondary); font-size:0.875rem;">
+                            <span>共 ${c.totalQuestions} 題</span> • <span>${c.sections.reduce((acc, s) => acc + s.parts.length, 0)} 個 Part</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:16px;">
+                        <div class="preview-status ${hasKey ? 'status-haskey' : 'status-nokey'}">
+                            <span class="material-symbols-outlined" style="font-size:18px;">${hasKey ? 'task_alt' : 'error'}</span>
+                            ${hasKey ? '已設定標準答案' : '尚未設定標準答案'}
+                        </div>
+                    </div>
+                    <div class="preview-actions">
+                        <button class="md-btn md-btn-contained btn-start-test-action" data-id="${c.id}">開始測驗</button>
+                        ${pausedTest ? `<button class="md-btn md-btn-outlined btn-resume-test-action" style="color: var(--md-secondary); border-color: var(--md-secondary);" data-id="${c.id}">繼續測驗</button>` : ''}
+                        <button class="md-btn md-btn-outlined btn-set-key-action" data-id="${c.id}">設定解答</button>
+                        ${history.length > 0 ? `<button class="md-btn md-btn-outlined btn-view-history-action" data-id="${c.id}">歷史 (${history.length})</button>` : `<button class="md-btn md-btn-outlined" disabled>歷史 (0)</button>`}
+                        <button class="md-btn md-btn-text md-btn-error btn-delete-card-action" data-id="${c.id}">刪除</button>
+                    </div>
+                </div>
+            `;
+        });
+        html += `</div>`;
+        appContainer.innerHTML = html;
+
+        // Bind Card Actions
+        document.querySelectorAll('.card-name-label').forEach(label => {
+            label.addEventListener('dblclick', () => {
+                const cardId = label.dataset.id;
+                const input = document.querySelector(`.card-name-input[data-id="${cardId}"]`);
+                if (!input) return;
+                input.value = label.textContent;
+                label.classList.add('hidden');
+                input.classList.remove('hidden');
+                input.focus();
+                input.select();
+            });
+        });
+
+        document.querySelectorAll('.card-name-input').forEach(input => {
+            const cardId = input.dataset.id;
+            const label = document.querySelector(`.card-name-label[data-id="${cardId}"]`);
+            if (!label) return;
+            const closeEditor = () => { input.classList.add('hidden'); label.classList.remove('hidden'); };
+            const saveName = () => {
+                const newName = input.value.trim();
+                const originalName = input.dataset.original || '';
+                if (!newName) { input.value = originalName; closeEditor(); return; }
+                if (newName !== originalName) { store.renameCard(cardId, newName); input.dataset.original = newName; }
+                label.textContent = newName; input.value = newName; closeEditor();
+            };
+            input.addEventListener('blur', saveName);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); input.blur(); } 
+                else if (e.key === 'Escape') { e.preventDefault(); input.value = input.dataset.original || label.textContent; closeEditor(); }
+            });
+        });
+
+        document.querySelectorAll('.btn-start-test-action').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const cardId = btn.dataset.id;
+                if (store.getPausedTest(cardId) && !confirm('您有一個未完成的測驗進度。開啟新測驗將會覆蓋它。確定要開啟新測驗嗎？')) return;
+                store.clearPausedTest(cardId);
+                navigateTo('test', {cardId: cardId, mode: 'test'});
+            });
+        });
+        document.querySelectorAll('.btn-resume-test-action').forEach(btn => {
+            btn.addEventListener('click', () => navigateTo('test', {cardId: btn.dataset.id, mode: 'test', isResume: true}));
+        });
+        document.querySelectorAll('.btn-set-key-action').forEach(btn => {
+            btn.addEventListener('click', () => navigateTo('test', {cardId: btn.dataset.id, mode: 'set_key'}));
+        });
+        document.querySelectorAll('.btn-view-history-action').forEach(btn => {
+            btn.addEventListener('click', () => window.viewHistory(btn.dataset.id));
+        });
+        document.querySelectorAll('.btn-delete-card-action').forEach(btn => {
+            btn.addEventListener('click', () => window.deleteCard(btn.dataset.id));
+        });
+    }
+
+    // Bind Top Level Actions
     document.getElementById('btn-goto-create').addEventListener('click', () => navigateTo('create'));
-    document.getElementById('btn-goto-preview').addEventListener('click', () => navigateTo('preview'));
+    
+    // Export Logic
+    document.getElementById('btn-export-data').addEventListener('click', () => {
+        const dataStr = JSON.stringify(store.data, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `answer_card_backup_${new Date().getTime()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    // Import Logic
+    document.getElementById('btn-import-data').addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = event => {
+                try {
+                    const importedData = JSON.parse(event.target.result);
+                    if (importedData && importedData.answerCards && importedData.history) {
+                        // Merge Logic: Keep existing if newer
+                        let cardsAdded = 0, historyAdded = 0;
+                        const existingCardIds = new Set(store.data.answerCards.map(c => c.id));
+                        const existingHistIds = new Set(store.data.history.map(h => h.id));
+                        
+                        importedData.answerCards.forEach(ic => {
+                            if (!existingCardIds.has(ic.id)) {
+                                store.data.answerCards.push(ic);
+                                cardsAdded++;
+                            }
+                        });
+                        
+                        importedData.history.forEach(ih => {
+                            if (!existingHistIds.has(ih.id)) {
+                                store.data.history.push(ih);
+                                historyAdded++;
+                            } else {
+                                // Update history if imported is newer (history has date)
+                                const existingHist = store.data.history.find(h => h.id === ih.id);
+                                if (ih.date > existingHist.date) {
+                                    Object.assign(existingHist, ih);
+                                    historyAdded++;
+                                }
+                            }
+                        });
+                        
+                        store.saveData();
+                        alert(`資料匯入成功！\\n新增/更新了 ${cardsAdded} 張答案卡, ${historyAdded} 筆歷史紀錄。`);
+                        navigateTo('home');
+                    } else {
+                        alert('無效的備份檔案格式！');
+                    }
+                } catch (err) {
+                    alert('讀取檔案失敗：' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    });
 }
 
 // ========== 2. Create Page (Wizard) ==========
 let createWizardState = {
     step: 1,
     optionsCount: 4,
-    partsCount: 1,
-    parts: [{ id: 1, count: 10, start: 1, end: 10 }],
+    sections: [
+        { id: 1, name: '預設區塊', parts: [{ id: 1, count: 10, start: 1, end: 10 }] }
+    ],
     name: ''
 };
 
@@ -79,7 +276,7 @@ function renderCreate() {
     `;
     document.getElementById('nav-btn-home').addEventListener('click', () => navigateTo('home'));
     document.getElementById('nav-btn-reset').addEventListener('click', () => {
-        createWizardState = { step: 1, optionsCount: 4, partsCount: 1, parts: [{ id: 1, count: 10, start: 1, end: 10 }], name: '' };
+        createWizardState = { step: 1, optionsCount: 4, sections: [{ id: 1, name: '預設區塊', parts: [{ id: 1, count: 10, start: 1, end: 10 }] }], name: '' };
         renderCreate();
     });
 
@@ -151,82 +348,124 @@ function renderWizardBody() {
         });
     } else if (createWizardState.step === 2) {
         body.innerHTML = `
-            <h2>Step 2: 題數與 Part 設定</h2>
+            <h2>Step 2: 題數與區塊 (Section) 設定</h2>
             <br/>
-            <div class="form-group">
-                <label>總共幾個 Part：</label>
-                <input type="number" class="md-input" id="inp-parts-count" min="1" value="${createWizardState.partsCount}">
-            </div>
-            <div id="parts-container" class="parts-grid"></div>
-            <div style="margin-top:24px; font-size:1.2rem; font-weight:bold;">
-                總題數: <span id="lbl-total-q">0</span> 題
+            <button class="md-btn md-btn-outlined" id="btn-add-section" style="margin-bottom: 16px;">+ 新增區塊</button>
+            <div id="sections-container"></div>
+            <div style="margin-top:24px; font-size:1.2rem; font-weight:bold; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 16px;">
+                總題數: <span id="lbl-total-q" style="color: var(--md-primary);">0</span> 題
             </div>
         `;
         
-        const countInp = document.getElementById('inp-parts-count');
-        const partsContainer = document.getElementById('parts-container');
+        const sectionsContainer = document.getElementById('sections-container');
         const totalLbl = document.getElementById('lbl-total-q');
 
-        const updatePartsUI = () => {
+        const updateSectionsUI = () => {
             let currentStart = 1;
-            let partsHtml = '';
             let total = 0;
+            let html = '';
+            let globalPartId = 1;
             
-            // Adjust parts array length
-            const diff = createWizardState.partsCount - createWizardState.parts.length;
-            if (diff > 0) {
-                for(let i=0; i<diff; i++) createWizardState.parts.push({ id: createWizardState.parts.length + 1, count: 10, start: 0, end: 0 });
-            } else if (diff < 0) {
-                createWizardState.parts.length = createWizardState.partsCount;
-            }
-
-            createWizardState.parts.forEach((p, idx) => {
-                p.start = currentStart;
-                p.end = p.start + p.count - 1;
-                total += p.count;
-                partsHtml += `
-                    <div class="part-card">
-                        <strong>Part ${p.id}</strong>
-                        <div class="form-group" style="margin-bottom:4px;">
-                            <input type="number" class="md-input part-count-inp" data-idx="${idx}" min="1" value="${p.count}" style="text-align:center;">
+            createWizardState.sections.forEach((sec, sIdx) => {
+                let secTotal = 0;
+                let partsHtml = '';
+                
+                sec.parts.forEach((p, pIdx) => {
+                    p.id = globalPartId++;
+                    p.start = currentStart;
+                    p.end = p.start + p.count - 1;
+                    secTotal += p.count;
+                    total += p.count;
+                    partsHtml += `
+                        <div class="part-card" style="position: relative;">
+                            <strong>Part ${p.id}</strong>
+                            <div class="form-group" style="margin-bottom:4px;">
+                                <input type="number" class="md-input part-count-inp" data-sidx="${sIdx}" data-pidx="${pIdx}" min="1" value="${p.count}" style="text-align:center; padding: 4px;">
+                            </div>
+                            <small>Q${p.start} - Q${p.end}</small>
+                            ${sec.parts.length > 1 ? `<span class="material-symbols-outlined btn-remove-part" data-sidx="${sIdx}" data-pidx="${pIdx}" style="position:absolute; top:4px; right:4px; font-size:16px; cursor:pointer; color:var(--md-error);">close</span>` : ''}
                         </div>
-                        <small>題號：${p.start} - ${p.end}</small>
+                    `;
+                    currentStart = p.end + 1;
+                });
+                
+                html += `
+                    <div class="md-card" style="padding: 16px; margin-bottom: 16px; border-left: 4px solid var(--md-primary);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <input type="text" class="md-input sec-name-inp" data-sidx="${sIdx}" value="${sec.name}" placeholder="區塊名稱 (例如: Listening)" style="max-width: 250px;">
+                            ${createWizardState.sections.length > 1 ? `<button class="md-btn md-btn-text md-btn-error btn-remove-sec" data-sidx="${sIdx}">刪除區塊</button>` : ''}
+                        </div>
+                        <div class="parts-grid">
+                            ${partsHtml}
+                            <button class="md-btn md-btn-text btn-add-part" data-sidx="${sIdx}" style="height: auto; min-height: 80px; border: 1px dashed var(--md-primary); color: var(--md-primary);">
+                                <span class="material-symbols-outlined">add</span> 新增 Part
+                            </button>
+                        </div>
                     </div>
                 `;
-                currentStart = p.end + 1;
             });
             
-            partsContainer.innerHTML = partsHtml;
+            sectionsContainer.innerHTML = html;
             totalLbl.textContent = total;
+
+            document.querySelectorAll('.sec-name-inp').forEach(inp => {
+                inp.addEventListener('input', (e) => {
+                    createWizardState.sections[e.target.dataset.sidx].name = e.target.value;
+                });
+            });
 
             document.querySelectorAll('.part-count-inp').forEach(inp => {
                 inp.addEventListener('change', (e) => {
-                    const idx = parseInt(e.target.dataset.idx);
+                    const sIdx = parseInt(e.target.dataset.sidx);
+                    const pIdx = parseInt(e.target.dataset.pidx);
                     let val = parseInt(e.target.value) || 1;
                     if(val < 1) val = 1;
-                    createWizardState.parts[idx].count = val;
-                    updatePartsUI(); // recalculate ranges instantly
+                    createWizardState.sections[sIdx].parts[pIdx].count = val;
+                    updateSectionsUI();
+                });
+            });
+
+            document.querySelectorAll('.btn-add-part').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const sIdx = parseInt(e.currentTarget.dataset.sidx);
+                    createWizardState.sections[sIdx].parts.push({ id: 0, count: 10, start: 0, end: 0 });
+                    updateSectionsUI();
+                });
+            });
+
+            document.querySelectorAll('.btn-remove-part').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const sIdx = parseInt(e.currentTarget.dataset.sidx);
+                    const pIdx = parseInt(e.currentTarget.dataset.pidx);
+                    createWizardState.sections[sIdx].parts.splice(pIdx, 1);
+                    updateSectionsUI();
+                });
+            });
+            
+            document.querySelectorAll('.btn-remove-sec').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const sIdx = parseInt(e.currentTarget.dataset.sidx);
+                    createWizardState.sections.splice(sIdx, 1);
+                    updateSectionsUI();
                 });
             });
         };
 
-        countInp.addEventListener('change', (e) => {
-            let val = parseInt(e.target.value) || 1;
-            if (val < 1) val = 1;
-            createWizardState.partsCount = val;
-            updatePartsUI();
+        document.getElementById('btn-add-section').addEventListener('click', () => {
+            createWizardState.sections.push({ id: Date.now(), name: `區塊 ${createWizardState.sections.length + 1}`, parts: [{ id: 0, count: 10, start: 0, end: 0 }] });
+            updateSectionsUI();
         });
 
-        updatePartsUI();
+        updateSectionsUI();
 
     } else if (createWizardState.step === 3) {
-        const totalQ = createWizardState.parts.reduce((sum, p) => sum + p.count, 0);
+        const totalQ = createWizardState.sections.reduce((sum, s) => sum + s.parts.reduce((pSum, p) => pSum + p.count, 0), 0);
         body.innerHTML = `
             <h2>Step 3: 確認與儲存</h2>
             <br/>
-            <div class="md-card" style="background:#f5f5f5; margin-bottom:16px;">
+            <div class="md-card" style="background: rgba(0,0,0,0.02); margin-bottom:16px;">
                 <p><strong>選項數量：</strong> ${createWizardState.optionsCount}</p>
-                <p><strong>總大題數：</strong> ${createWizardState.partsCount}</p>
+                <p><strong>區塊數量：</strong> ${createWizardState.sections.length}</p>
                 <p><strong>總題數：</strong> ${totalQ}</p>
             </div>
             <div class="form-group">
@@ -241,148 +480,22 @@ function renderWizardBody() {
 }
 
 function saveAnswerCard() {
-    const totalQuestions = createWizardState.parts.reduce((sum, p) => sum + p.count, 0);
+    const totalQuestions = createWizardState.sections.reduce((sum, s) => sum + s.parts.reduce((pSum, p) => pSum + p.count, 0), 0);
     const name = createWizardState.name.trim() || '未命名答案卡';
     
     store.addCard({
         name,
         optionsCount: createWizardState.optionsCount,
-        parts: JSON.parse(JSON.stringify(createWizardState.parts)),
+        sections: JSON.parse(JSON.stringify(createWizardState.sections)),
         totalQuestions
     });
 
-    // Reset state and go to preview
-    createWizardState = { step: 1, optionsCount: 4, partsCount: 1, parts: [{ id: 1, count: 10, start: 1, end: 10 }], name: '' };
-    navigateTo('preview');
+    // Reset state and go to home
+    createWizardState = { step: 1, optionsCount: 4, sections: [{ id: 1, name: '預設區塊', parts: [{ id: 1, count: 10, start: 1, end: 10 }] }], name: '' };
+    navigateTo('home');
 }
 
-// ========== 3. Preview/Library Page ==========
-function renderPreview() {
-    navTitle.textContent = '我的答案卡';
-    navActions.innerHTML = `<button class="md-btn md-btn-text" id="nav-btn-home"><span class="material-symbols-outlined">home</span>首頁</button>`;
-    document.getElementById('nav-btn-home').addEventListener('click', () => navigateTo('home'));
-
-    const cards = store.getCards();
-
-    if (cards.length === 0) {
-        appContainer.innerHTML = `
-            <div class="md-card" style="text-align:center; padding:48px 16px;">
-                <span class="material-symbols-outlined" style="font-size:48px; color:var(--text-disabled); margin-bottom:16px;">inbox</span>
-                <h2>還沒有任何答案卡</h2>
-                <p style="color:var(--text-secondary); margin-bottom:24px;">你還沒有建立過任何答案卡，現在就開始製作一個吧！</p>
-                <button class="md-btn md-btn-contained" onclick="navigateTo('create')">開始製作</button>
-            </div>
-        `;
-        return;
-    }
-
-    const escapeHtml = (str) => String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-
-    let html = `<div class="preview-grid">`;
-    cards.forEach(c => {
-        const hasKey = c.answerKey !== null;
-        const history = store.getHistoryByCardId(c.id);
-        const escapedCardName = escapeHtml(c.name);
-
-        html += `
-            <div class="md-card preview-item">
-                <div class="preview-item-header">
-                    <div class="card-name-row">
-                        <h3 class="card-name-label" data-id="${c.id}" title="雙擊可修改名稱">${escapedCardName}</h3>
-                        <input type="text" class="md-input card-name-input hidden" data-id="${c.id}" data-original="${escapedCardName}" value="${escapedCardName}" aria-label="答案卡名稱">
-                    </div>
-                    <div style="color:var(--text-secondary); font-size:0.875rem;">
-                        <span>共 ${c.totalQuestions} 題</span> • <span>${c.parts.length} 個 Part</span>
-                    </div>
-                </div>
-                <div style="margin-bottom:16px;">
-                    <div class="preview-status ${hasKey ? 'status-haskey' : 'status-nokey'}">
-                        <span class="material-symbols-outlined" style="font-size:18px;">${hasKey ? 'task_alt' : 'error'}</span>
-                        ${hasKey ? '已設定標準答案' : '尚未設定標準答案'}
-                    </div>
-                </div>
-                <div class="preview-actions">
-                    <button class="md-btn md-btn-contained btn-start-test-action" data-id="${c.id}">開始測驗</button>
-                    <button class="md-btn md-btn-outlined btn-set-key-action" data-id="${c.id}">設定解答</button>
-                    ${history.length > 0 ? `<button class="md-btn md-btn-outlined btn-view-history-action" data-id="${c.id}">歷史 (${history.length})</button>` : `<button class="md-btn md-btn-outlined" disabled>歷史 (0)</button>`}
-                    <button class="md-btn md-btn-text md-btn-error btn-delete-card-action" data-id="${c.id}">刪除</button>
-                </div>
-            </div>
-        `;
-    });
-    html += `</div>`;
-    appContainer.innerHTML = html;
-
-    document.querySelectorAll('.card-name-label').forEach(label => {
-        label.addEventListener('dblclick', () => {
-            const cardId = label.dataset.id;
-            const input = document.querySelector(`.card-name-input[data-id="${cardId}"]`);
-            if (!input) return;
-            input.value = label.textContent;
-            label.classList.add('hidden');
-            input.classList.remove('hidden');
-            input.focus();
-            input.select();
-        });
-    });
-
-    document.querySelectorAll('.card-name-input').forEach(input => {
-        const cardId = input.dataset.id;
-        const label = document.querySelector(`.card-name-label[data-id="${cardId}"]`);
-        if (!label) return;
-
-        const closeEditor = () => {
-            input.classList.add('hidden');
-            label.classList.remove('hidden');
-        };
-
-        const saveName = () => {
-            const newName = input.value.trim();
-            const originalName = input.dataset.original || '';
-            if (!newName) {
-                input.value = originalName;
-                closeEditor();
-                return;
-            }
-            if (newName !== originalName) {
-                store.renameCard(cardId, newName);
-                input.dataset.original = newName;
-            }
-            label.textContent = newName;
-            input.value = newName;
-            closeEditor();
-        };
-
-        input.addEventListener('blur', saveName);
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                input.blur();
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                input.value = input.dataset.original || label.textContent;
-                closeEditor();
-            }
-        });
-    });
-
-    document.querySelectorAll('.btn-start-test-action').forEach(btn => {
-        btn.addEventListener('click', () => navigateTo('test', {cardId: btn.dataset.id, mode: 'test'}));
-    });
-    document.querySelectorAll('.btn-set-key-action').forEach(btn => {
-        btn.addEventListener('click', () => navigateTo('test', {cardId: btn.dataset.id, mode: 'set_key'}));
-    });
-    document.querySelectorAll('.btn-view-history-action').forEach(btn => {
-        btn.addEventListener('click', () => window.viewHistory(btn.dataset.id));
-    });
-    document.querySelectorAll('.btn-delete-card-action').forEach(btn => {
-        btn.addEventListener('click', () => window.deleteCard(btn.dataset.id));
-    });
+// renderPreview is removed as it's merged into renderHome
 
     window.viewHistory = (cardId) => {
         const modalContainer = document.getElementById('modal-container');
@@ -452,7 +565,7 @@ function renderPreview() {
             const sortedHist = [...hist].sort((a, b) => sortDirection === 'asc' ? a.date - b.date : b.date - a.date);
             if (!sortedHist.length) {
                 closeHistoryModal();
-                renderPreview();
+                renderHome();
                 return;
             }
 
@@ -507,16 +620,16 @@ function renderPreview() {
     window.deleteCard = (id) => {
         if(confirm('確定要刪除這張答案卡與所有的測驗歷史紀錄嗎？這個動作無法復原。')) {
             store.deleteCard(id);
-            renderPreview();
+            renderHome();
         }
     };
-}
 
 // ========== 4. Test Page (Multi-Mode) ==========
 let testState = {
     timerInterval: null,
     secondsElapsed: 0,
     answers: {},
+    flagged: {},
     isStarted: false,
     isPaused: false
 };
@@ -529,7 +642,7 @@ function renderTest(params) {
     const historyId = params.historyId;
     
     const card = store.getCardById(cardId);
-    if (!card) return navigateTo('preview');
+    if (!card) return navigateTo('home');
     const formatDuration = (totalSeconds) => {
         if (typeof totalSeconds !== 'number' || totalSeconds < 0) return '未記錄';
         const h = Math.floor(totalSeconds / 3600);
@@ -544,14 +657,25 @@ function renderTest(params) {
     if (mode === 'review' && historyId) {
         reviewHistoryOptions = store.getHistoryByCardId(cardId).sort((a, b) => a.date - b.date);
         historyRecord = reviewHistoryOptions.find(h => h.id === historyId);
-        if(!historyRecord) return navigateTo('preview');
+        if(!historyRecord) return navigateTo('home');
     }
 
     const hasAnswerKey = !!(card.answerKey && Object.keys(card.answerKey).length > 0);
 
     // Reset state
-    testState = { timerInterval: null, secondsElapsed: 0, answers: {}, isStarted: false, isPaused: false };
-    if(mode === 'set_key' && card.answerKey) testState.answers = {...card.answerKey};
+    testState = { timerInterval: null, secondsElapsed: 0, answers: {}, flagged: {}, isStarted: false, isPaused: false };
+    
+    if (mode === 'test' && params.isResume) {
+        const pausedData = store.getPausedTest(cardId);
+        if (pausedData) {
+            testState.answers = pausedData.answers || {};
+            testState.flagged = pausedData.flagged || {};
+            testState.secondsElapsed = pausedData.secondsElapsed || 0;
+            // The user will need to click "Start" again to unpause
+        }
+    } else if(mode === 'set_key' && card.answerKey) {
+        testState.answers = {...card.answerKey};
+    }
 
     // Nav setup
     navTitle.textContent = mode === 'test' ? '模擬考試: ' + card.name : 
@@ -561,60 +685,66 @@ function renderTest(params) {
     
     document.getElementById('nav-btn-abandon').addEventListener('click', () => {
         if(mode === 'test' && !confirm('確定要放棄考試嗎？進度將不會儲存。')) return;
+        if(mode === 'test') store.clearPausedTest(cardId); // Cancel test should clear resume state
         if(testState.timerInterval) clearInterval(testState.timerInterval);
-        navigateTo('preview');
+        navigateTo('home');
     });
 
     // Content Generation
     let partsHtml = '';
-    card.parts.forEach(part => {
-        partsHtml += `
-            <div class="part-section">
-                <div class="part-header">Part ${part.id} (Q${part.start} - Q${part.end})</div>
-                <div class="questions-grid">
-        `;
-        
-        for(let q = part.start; q <= part.end; q++) {
-            let bubblesHtml = '';
-            const isReview = mode === 'review';
-            const userAns = isReview ? historyRecord.answers[q] : null;
-            const correctAns = isReview ? (card.answerKey ? card.answerKey[q] : null) : null;
+    card.sections.forEach(sec => {
+        partsHtml += `<div class="section-container" style="margin-bottom: 24px; padding: 12px; background: rgba(0,0,0,0.02); border-radius: 8px;">`;
+        partsHtml += `<h3 style="text-align: center; color: var(--md-primary); margin-bottom: 12px;">${sec.name}</h3>`;
+        sec.parts.forEach(part => {
+            partsHtml += `
+                <div class="part-section">
+                    <div class="part-separator">Part ${part.id} (Q${part.start} - Q${part.end})</div>
+                    <div class="questions-grid">
+            `;
             
-            for(let opt = 0; opt < card.optionsCount; opt++) {
-                const letter = optionLetters[opt] || '?';
-                let classes = 'bubble';
+            for(let q = part.start; q <= part.end; q++) {
+                let bubblesHtml = '';
+                const isReview = mode === 'review';
+                const userAns = isReview ? historyRecord.answers[q] : null;
+                const correctAns = isReview ? (card.answerKey ? card.answerKey[q] : null) : null;
                 
-                if (mode === 'test') {
-                    classes += ' locked';
-                } else if (mode === 'set_key') {
-                    if (testState.answers[q] === letter) classes += ' selected';
-                } else if (mode === 'review') {
-                    classes += ' locked';
-                    if (userAns === letter && correctAns === letter) {
-                        classes += ' review-correct';
-                    } else if (userAns === letter && correctAns !== letter) {
-                        classes += ' review-wrong';
-                    } else if (userAns !== letter && correctAns === letter) {
-                        classes += ' review-key';
-                    } else if (!userAns && correctAns === letter) {
-                        classes += ' review-key';
-                    } else if (!correctAns && userAns === letter) {
-                         // selected but no key available
-                         classes += ' selected';
+                for(let opt = 0; opt < card.optionsCount; opt++) {
+                    const letter = optionLetters[opt] || '?';
+                    let classes = 'bubble';
+                    
+                    if (mode === 'test') {
+                        classes += ' locked';
+                    } else if (mode === 'set_key') {
+                        if (testState.answers[q] === letter) classes += ' selected';
+                    } else if (mode === 'review') {
+                        classes += ' locked';
+                        if (userAns === letter && correctAns === letter) {
+                            classes += ' review-correct';
+                        } else if (userAns === letter && correctAns !== letter) {
+                            classes += ' review-wrong';
+                        } else if (userAns !== letter && correctAns === letter) {
+                            classes += ' review-key';
+                        } else if (!userAns && correctAns === letter) {
+                            classes += ' review-key';
+                        } else if (!correctAns && userAns === letter) {
+                             // selected but no key available
+                             classes += ' selected';
+                        }
                     }
+                    
+                    bubblesHtml += `<div class="${classes}" data-q="${q}" data-val="${letter}">${letter}</div>`;
                 }
                 
-                bubblesHtml += `<div class="${classes}" data-q="${q}" data-val="${letter}">${letter}</div>`;
+                partsHtml += `
+                    <div class="question-row ${testState.flagged[q] ? 'flagged' : ''}">
+                        <div class="q-num">${q}.</div>
+                        <div class="bubble-group">${bubblesHtml}</div>
+                    </div>
+                `;
             }
-            
-            partsHtml += `
-                <div class="question-row">
-                    <div class="q-num">${q}.</div>
-                    <div class="bubble-group">${bubblesHtml}</div>
-                </div>
-            `;
-        }
-        partsHtml += `</div></div>`;
+            partsHtml += `</div></div>`;
+        });
+        partsHtml += `</div>`;
     });
 
     // Header HTML based on mode
@@ -661,22 +791,75 @@ function renderTest(params) {
             return `<option value="${h.id}" ${h.id === historyRecord.id ? 'selected' : ''}>${idx + 1}. ${h.testName} (${dateLabel})</option>`;
         }).join('');
 
+        let scoreDetailsHtml = '';
+        if (historyRecord.score !== null && typeof historyRecord.score === 'object') {
+            const { totalCorrect, totalQuestions, sectionsScore, partsScore } = historyRecord.score;
+            scoreDetailsHtml += `<p style="font-size:1.8rem; color:var(--md-primary); font-weight:bold; margin: 8px 0;">總分: ${totalCorrect} / ${totalQuestions}</p>`;
+            scoreDetailsHtml += `<div style="display: flex; flex-direction: column; gap: 16px; margin-top: 12px; text-align: left;">`;
+            
+            card.sections.forEach(sec => {
+                const secScore = sectionsScore[sec.id];
+                if (!secScore) return;
+                scoreDetailsHtml += `
+                <div style="background: var(--md-surface); box-shadow: var(--elevation-1); padding: 12px 16px; border-radius: 8px; border-left: 4px solid var(--md-primary);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-weight: bold; font-size: 1.1rem; color: var(--text-primary);">${sec.name}</span>
+                        <span style="font-weight: bold; font-size: 1.1rem; color: var(--md-primary-variant);">${secScore.correct} / ${secScore.total}</span>
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                `;
+                sec.parts.forEach(p => {
+                    const pScore = partsScore[p.id];
+                    if (!pScore) return;
+                    scoreDetailsHtml += `
+                        <div style="background: rgba(0,0,0,0.04); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; color: var(--text-secondary);">
+                            Part ${p.id}: <span style="color: var(--md-primary); font-weight: bold;">${pScore.correct} / ${pScore.total}</span>
+                        </div>
+                    `;
+                });
+                scoreDetailsHtml += `</div></div>`;
+            });
+            scoreDetailsHtml += `</div>`;
+        } else {
+            const sVal = typeof historyRecord.score === 'number' ? historyRecord.score : (historyRecord.score?.totalCorrect ?? '未設定標準答案');
+            scoreDetailsHtml += `<p style="font-size:1.5rem; color:var(--md-primary); font-weight:bold;">成績: ${sVal} / ${card.totalQuestions}</p>`;
+        }
+
         headerHtml = `
-            <div class="review-header">
-                <div style="text-align:center;">
-                    <div style="margin-bottom:12px;">
+            <div class="review-header" style="flex-direction: column;">
+                <div style="width: 100%; text-align:center; max-width: 600px;">
+                    <div style="margin-bottom:16px;">
                         <select id="review-history-select" class="md-input" style="min-width:280px; max-width:100%;">
                             ${reviewOptionsHtml}
                         </select>
                     </div>
                     <h2 style="margin-bottom:8px;">測驗名稱: ${historyRecord.testName}</h2>
-                    <p style="font-size:1.5rem; color:var(--md-primary); font-weight:bold;">
-                        成績: ${historyRecord.score !== null ? historyRecord.score + ' / ' + card.totalQuestions : '未設定標準答案無法算分'}
-                    </p>
-                    <p style="color:var(--text-secondary); margin-top:8px;">
+                    ${scoreDetailsHtml}
+                    <p style="color:var(--text-secondary); margin-top:16px;">
                         花費時間: ${formatDuration(historyRecord.durationSeconds)}
                     </p>
                 </div>
+            </div>
+        `;
+    }
+
+    // Mini-map logic
+    let miniMapHtml = '';
+    if (mode === 'test') {
+        let gridHtml = '';
+        for (let i = 1; i <= card.totalQuestions; i++) {
+            gridHtml += `<div class="minimap-node" data-target="${i}">${i}</div>`;
+        }
+        miniMapHtml = `
+            <button id="btn-toggle-minimap" class="md-btn md-btn-contained" style="position: fixed; bottom: 24px; right: 24px; z-index: 1000; border-radius: 50%; width: 56px; height: 56px; padding: 0;">
+                <span class="material-symbols-outlined">grid_view</span>
+            </button>
+            <div id="minimap-drawer" class="minimap-drawer hidden">
+                <div class="minimap-header">
+                    <h3>導航地圖</h3>
+                    <button class="md-btn md-btn-text" id="btn-close-minimap" style="min-width: 0; padding: 4px;"><span class="material-symbols-outlined">close</span></button>
+                </div>
+                <div class="minimap-grid">${gridHtml}</div>
             </div>
         `;
     }
@@ -692,6 +875,7 @@ function renderTest(params) {
                 </button>
             </div>
         ` : ''}
+        ${miniMapHtml}
     `;
 
     // Interactivity logic
@@ -702,7 +886,18 @@ function renderTest(params) {
         if (!prog) return;
         if(mode==='test') prog.textContent = `完成度: ${Object.keys(testState.answers).length} / ${card.totalQuestions}`;
         if(mode==='set_key') prog.textContent = `${Object.keys(testState.answers).length} / ${card.totalQuestions}`;
+        
+        // Update minimap
+        if (mode === 'test') {
+            document.querySelectorAll('.minimap-node').forEach(node => {
+                const q = node.dataset.target;
+                node.classList.remove('answered', 'flagged-node');
+                if (testState.answers[q]) node.classList.add('answered');
+                if (testState.flagged[q]) node.classList.add('flagged-node');
+            });
+        }
     };
+    // Initialization logic for Resume
     const applyAnswersToBubbles = () => {
         if (mode === 'review') return;
         document.querySelectorAll('.question-row').forEach(row => {
@@ -715,9 +910,17 @@ function renderTest(params) {
             const selectedBubble = row.querySelector(`.bubble[data-val="${selectedVal}"]`);
             if (selectedBubble) selectedBubble.classList.add('selected');
         });
-        updateProgress();
     };
-    
+
+    const initVisualState = () => {
+        updateProgress();
+        if ((mode === 'test' && params.isResume) || mode === 'set_key') {
+            applyAnswersToBubbles();
+        }
+    };
+
+    initVisualState();
+
     let isLiveFeedbackEnabled = false;
     const feedbackClasses = ['review-correct', 'review-wrong', 'review-key'];
 
@@ -776,13 +979,71 @@ function renderTest(params) {
             this.classList.add('selected');
             testState.answers[q] = val;
             
+            // Auto-Save
+            if (mode === 'test') {
+                store.savePausedTest(cardId, {
+                    answers: testState.answers,
+                    flagged: testState.flagged,
+                    secondsElapsed: testState.secondsElapsed
+                });
+            }
+            
             // Update progress text
             updateProgress();
             if (mode === 'test') applyLiveFeedbackForQuestion(q);
         });
     });
 
+    // Flagging System (Right click)
+    document.querySelectorAll('.question-row').forEach(row => {
+        row.addEventListener('contextmenu', function(e) {
+            e.preventDefault(); // Prevent default right-click menu
+            if (mode !== 'test' || !testState.isStarted) return;
+            const q = this.querySelector('.bubble').dataset.q;
+            if (testState.flagged[q]) {
+                delete testState.flagged[q];
+                this.classList.remove('flagged');
+            } else {
+                testState.flagged[q] = true;
+                this.classList.add('flagged');
+            }
+            // Auto-Save
+            if (mode === 'test') {
+                store.savePausedTest(cardId, {
+                    answers: testState.answers,
+                    flagged: testState.flagged,
+                    secondsElapsed: testState.secondsElapsed
+                });
+                updateProgress(); // To update minimap flagged color
+            }
+        });
+    });
+
     if (mode === 'test') {
+        // Mini-map Bindings
+        const miniMapToggle = document.getElementById('btn-toggle-minimap');
+        const miniMapDrawer = document.getElementById('minimap-drawer');
+        const miniMapClose = document.getElementById('btn-close-minimap');
+        
+        if (miniMapToggle && miniMapDrawer) {
+            miniMapToggle.addEventListener('click', () => {
+                miniMapDrawer.classList.toggle('hidden');
+            });
+            miniMapClose.addEventListener('click', () => {
+                miniMapDrawer.classList.add('hidden');
+            });
+            document.querySelectorAll('.minimap-node').forEach(node => {
+                node.addEventListener('click', () => {
+                    const targetQ = node.dataset.target;
+                    const el = document.querySelector(`.bubble[data-q="${targetQ}"]`);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        miniMapDrawer.classList.add('hidden');
+                    }
+                });
+            });
+        }
+
         const btnToggle = document.getElementById('btn-toggle-test');
         const btnLiveFeedback = document.getElementById('btn-live-feedback');
         const btnFinish = document.getElementById('btn-finish-test');
@@ -795,6 +1056,10 @@ function renderTest(params) {
             if (hasSubmitted) return;
             hasSubmitted = true;
             clearInterval(testState.timerInterval);
+            
+            // Clear auto-save
+            store.clearPausedTest(cardId);
+            
             const nameInp = document.getElementById('test-instance-name').value.trim();
             const d = new Date();
             const defaultName = '模擬測驗';

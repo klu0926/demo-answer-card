@@ -1,46 +1,32 @@
-title : 模擬答案卡
+- in test, seperate each parts with a light line and text
 
-des : 可以客製化的答案卡的網站，可以設定題數、選項、題型
+- Mini-Map" / Question Navigator:
+Problem: If a user skips question 45 to come back to it later, it's hard to find it again by scrolling.
+Solution: Add a floating action button (FAB) or a side drawer that shows a grid of tiny squares representing all 200 questions. Color-code them: Grey = Unanswered, Blue = Answered, Red = Flagged. Clicking a square smoothly scrolls them right to that question.
 
-limit: 目前只有選擇題用於 TOEIC 
-
-首頁 landing page : 
-在上面有兩個按鈕，"製作答案卡"，以及"預覽答案卡"可以連結到相對頁面
-
-
-++製作答案卡頁面
-這一頁是設定答案卡的基本設定，在畫面最上面會有目前的step，用進度條表示，點即可以回到之前設定好的步驟
-每步驟設定好以後可以在頁面下面點即"下一步" 或是 "上一步"，全部完成可以點擊"完成"，會自動跑去"答案卡預覽"
-
-Setup : 
-1. 設定選擇題答案數量 (2 ~ 6) default to 4
-2. 選擇共有幾個parts (自己填) default to 1 不可以小於1, 選擇後會在下面繼續出現每一個parts的input 可以填入每個part有幾題 (不可小於1題) 
-    - 在頁面最下方會顯示目前總共有幾題. 
-    - 在每個part input的下面也會顯示目前這個part是從第幾題到第幾題 (ex: 101 - 120 ) 題數會因為修改任何一部分的part數量自動調整
-3. 預覽答案數量，每個 part題目數量，跟總題數，還有一個考試名稱input，輸入名稱跟確定資訊後可以選"完成"，這會帶使用者到預覽答案卡頁面
-
-在畫面最上面有"首頁"可以回去首頁
-在畫面最上面有"重新設定"點選可以reset全部設定到第一步
+Satisfying Micro-Interactions:
+Solution: Add subtle animations. When an option bubble is tapped, it should have a Material Design "ripple" effect or a slight scale "pop" animation. When transitioning between the Setup Steps, slide the content left/right rather than instantly replacing it.
 
 
-++預覽答案卡頁面
--顯示目前全部答案卡的簡單介紹跟之前做過的測試，每次做完測試會把答案記住，可以多次使用類似存檔一樣的在同款答案卡做多次測試跟不同的存檔
--每個預覽卡片會有一個 "開始作答" 的按鈕，點擊後會進入到作答頁面
--每個率覽卡片會有一個"刪除"的按鈕，點擊後會刪除該答案卡，點即會再次確認，刪除會刪除答案卡與其測試檔案
--可以修改答案卡名稱
--預覽卡會有"考試歷史"按鈕，如果沒有考試會是灰色deactive，如果有考試歷史會有顯示數字ex:(1)，點擊後會展開一modal可以選擇要看哪一個考試歷史
-
-++作答頁面
--在頁面上方左邊有這答案卡考試的名稱，同時也有一個INPUT可以自行輸入這次的名稱例如:第一次模擬考 這個input要是沒有輸入會default 成這次考試的日期+時間(年月日時分，不用秒數)
--頁面上方中間有一個計時器(歸零)跟一個"開始考試"，點即以後會開始跑計時器
--頁面中間是答案卡，可以點即選擇答案 
--答案卡最下面是 "完成考試"，點即會把這答案卡存檔，然後跳轉到預覽答案卡頁面
+Dark Mode:
+Solution: Studying often happens late at night. Implementing a system-aware or toggleable Dark Mode will reduce eye strain and make the app feel incredibly premium.
 
 
-技術:
-- 使用 javascript
-- 使用 localstorage (不用登入)
+Auto-Save & Resume:
+Idea: Imagine taking a 2-hour test and accidentally refreshing the page. Instead of losing everything, use localStorage to save their current session's answers every time they click a bubble. Allow them to "Resume" an incomplete test.
+if a test is not completed and paused, user can see a resume button in that test card, only 1 test can be resume per test
+
+create test allow to create "section", section is a group of "part", for example"listening section can have 3 parts, writing section can have 5 parts
 
 
+final scroe shows total score as well as section score, part score
+
+
+Data Export/Import (Backup):
+Idea: Because localStorage is tied to the browser, clearing cache deletes all test history. Add a simple "Export Data" button that downloads a .json file of their store.js data, and an "Import Data" to restore it on a different device.
+
+
+Flagging System:
+Idea: Add a small "Flag" icon next to each question number. Users can click it if they are unsure of their answer, serving as a visual reminder to review it before submitting. this can be done by right click on an answer, the background of that answer (for example 4 bubbles) will be sligly differnet to show it has been flaged.
 
 

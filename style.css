@@ -35,6 +35,26 @@
     --spacing-4: 32px;
 }
 
+body.dark-theme {
+    --md-primary: #9fa8da;
+    --md-primary-variant: #7986cb;
+    --md-secondary: #f48fb1;
+    --md-background: #121212;
+    --md-surface: #1e1e1e;
+    --md-error: #cf6679;
+    --md-on-primary: #000000;
+    --md-on-secondary: #000000;
+    --md-on-background: #ffffff;
+    --md-on-surface: #ffffff;
+    --md-success: #81c784;
+
+    --text-primary: rgba(255, 255, 255, 0.87);
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --text-disabled: rgba(255, 255, 255, 0.38);
+
+    /* Shadows might need adjustment in dark mode, often lighter borders are used, but we keep elevations for now */
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -46,6 +66,7 @@ body {
     background-color: var(--md-background);
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s, color 0.3s;
 }
 
 /* App Bar */
@@ -183,6 +204,11 @@ body {
     padding: 11px calc(var(--spacing-2) - 1px);
 }
 
+.md-input {
+    background-color: var(--md-surface);
+    color: var(--text-primary);
+}
+
 /* Wizard Progress */
 .wizard-progress {
     display: flex;
@@ -233,6 +259,12 @@ body {
 
 .wizard-body {
     min-height: 200px;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
 }
 
 .wizard-actions {
@@ -796,6 +828,120 @@ body {
     font-size: 0.95rem;
     font-weight: 700;
     line-height: 1.1;
+}
+
+/* Part Separator */
+.part-separator {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: var(--text-secondary);
+    margin: var(--spacing-3) 0 var(--spacing-2);
+}
+.part-separator::before,
+.part-separator::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+body.dark-theme .part-separator::before,
+body.dark-theme .part-separator::after {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.part-separator:not(:empty)::before {
+    margin-right: 1em;
+}
+.part-separator:not(:empty)::after {
+    margin-left: 1em;
+}
+
+/* Flagged Question */
+.question-row.flagged {
+    background-color: rgba(255, 193, 7, 0.25);
+    border-radius: var(--border-radius-sm);
+    transition: background-color 0.2s;
+}
+.question-row.flagged:hover {
+    background-color: rgba(255, 193, 7, 0.35);
+}
+body.dark-theme .question-row.flagged {
+    background-color: rgba(255, 193, 7, 0.15);
+}
+body.dark-theme .question-row.flagged:hover {
+    background-color: rgba(255, 193, 7, 0.25);
+}
+
+/* Bubble Micro-interactions */
+.bubble {
+    transition: transform 0.1s ease-out, background-color 0.2s;
+}
+.bubble:active:not(.locked) {
+    transform: scale(0.9);
+}
+
+/* Mini-Map */
+.minimap-drawer {
+    position: fixed;
+    bottom: 90px;
+    right: 24px;
+    width: 320px;
+    max-height: 400px;
+    background: var(--md-surface);
+    box-shadow: var(--elevation-8);
+    border-radius: var(--border-radius-md);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: opacity 0.2s, transform 0.2s;
+}
+.minimap-drawer.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(20px);
+}
+.minimap-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    background: rgba(63, 81, 181, 0.05);
+}
+.minimap-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    padding: 16px;
+    overflow-y: auto;
+}
+.minimap-node {
+    width: 100%;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.05);
+    border-radius: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+body.dark-theme .minimap-node {
+    background: rgba(255,255,255,0.05);
+}
+.minimap-node:hover {
+    background: rgba(0,0,0,0.1);
+}
+.minimap-node.answered {
+    background: var(--md-primary);
+    color: var(--md-on-primary);
+}
+.minimap-node.flagged-node {
+    background: #ffc107;
+    color: #000;
+    font-weight: bold;
 }
 
 .test-locked {

@@ -1,9 +1,18 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>答案卡</title>
+    
+    <!-- PWA / Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="public/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="public/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="public/favicon-16x16.png">
+    <link rel="manifest" href="public/site.webmanifest">
+    <link rel="shortcut icon" href="public/favicon.ico">
+    <meta name="theme-color" content="#3f51b5">
+
     <!-- Google Fonts: Roboto & Material Symbols -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,10 +24,18 @@
     <!-- 頂部導覽列 -->
     <header class="app-bar">
         <div class="app-bar-content">
-            <h1 class="app-title" id="nav-title">答案卡</h1>
-            <nav id="navbar-actions">
-                <!-- 動態生成的導覽列按鈕放這裡 (如：首頁、重新設定) -->
-            </nav>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <img src="public/favicon-32x32.png" alt="Logo" style="width: 24px; height: 24px;">
+                <h1 class="app-title" id="nav-title">答案卡</h1>
+            </div>
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <nav id="navbar-actions">
+                    <!-- 動態生成的導覽列按鈕放這裡 (如：首頁、重新設定) -->
+                </nav>
+                <button class="md-btn md-btn-text" id="theme-toggle" title="切換深色模式" style="padding: 0; min-width: 40px; border-radius: 50%;">
+                    <span class="material-symbols-outlined" id="theme-icon">dark_mode</span>
+                </button>
+            </div>
         </div>
     </header>
 

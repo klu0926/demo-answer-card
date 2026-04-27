@@ -1,18 +1,26 @@
 :root {
     /* Modern, clean, professional palette */
-    --md-primary: #0f172a; /* Slate 900 */
-    --md-primary-variant: #334155; /* Slate 700 */
-    --md-secondary: #f8fafc; /* Slate 50 */
-    --md-secondary-variant: #e2e8f0; /* Slate 200 */
-    --md-background: #f8fafc; /* Slate 50 */
+    --md-primary: #0f172a;
+    /* Slate 900 */
+    --md-primary-variant: #334155;
+    /* Slate 700 */
+    --md-secondary: #f8fafc;
+    /* Slate 50 */
+    --md-secondary-variant: #e2e8f0;
+    /* Slate 200 */
+    --md-background: #f8fafc;
+    /* Slate 50 */
     --md-surface: #ffffff;
-    --md-error: #ef4444; /* Red 500 */
+    --md-error: #ef4444;
+    /* Red 500 */
     --md-on-primary: #ffffff;
     --md-on-secondary: #0f172a;
     --md-on-background: #0f172a;
     --md-on-surface: #0f172a;
-    --md-success: #10b981; /* Emerald 500 */
-    --border-color: #e2e8f0; /* Slate 200 */
+    --md-success: #10b981;
+    /* Emerald 500 */
+    --border-color: #e2e8f0;
+    /* Slate 200 */
 
     /* Text Colors */
     --text-primary: #0f172a;
@@ -951,7 +959,7 @@ body.dark-theme .md-input:focus {
 .test-status-sticky {
     position: -webkit-sticky;
     position: sticky;
-    top: 64px;
+    top: 0px;
     z-index: 1101;
     display: flex;
     align-items: center;
@@ -1056,10 +1064,6 @@ body.dark-theme .md-input:focus {
     .test-entry-header {
         grid-template-columns: 1fr;
         gap: 8px;
-    }
-
-    .test-status-sticky {
-        top: 64px;
     }
 
     .test-header-equal {
@@ -1470,7 +1474,7 @@ body.dark-theme .minimap-node {
     }
 
     .test-status-sticky {
-        top: 64px;
+        top: 0px;
         padding: 6px 8px;
         gap: 8px;
         margin-bottom: 8px;
@@ -2568,7 +2572,7 @@ body.dark-theme .test-entry-header {
     .home-toolbar-actions .md-btn .btn-text {
         display: none;
     }
-    
+
     .home-toolbar-actions .md-btn .fa-solid {
         font-size: 1rem;
     }
@@ -2611,6 +2615,7 @@ body.dark-theme .test-entry-header {
         flex-basis: 100%;
     }
 }
+
 /* Material Design alignment overhaul */
 :root {
     --md-primary: #2563eb;
@@ -2757,6 +2762,7 @@ h6 {
     box-shadow: var(--elevation-2);
     filter: none;
 }
+
 .app-dialog-danger .app-dialog-confirm {
     background: var(--md-error);
     color: #ffffff;
@@ -2863,11 +2869,6 @@ textarea.md-input {
     font-size: var(--type-label);
 }
 
-.wizard-shell,
-.test-container,
-.review-header {
-    max-width: 920px;
-}
 
 .section-container,
 .section-edit-card,
@@ -3021,6 +3022,7 @@ textarea.md-input {
         padding: 4px 6px;
     }
 }
+
 /* Tag filter selected color */
 #sel-tag-filter.has-tag-color {
     color: var(--tag-filter-color);
@@ -3034,6 +3036,7 @@ textarea.md-input {
     border-color: var(--tag-filter-color);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--tag-filter-color) 18%, transparent);
 }
+
 /* Keep tag filter dropdown options from inheriting selected tag tint */
 #sel-tag-filter.has-tag-color option {
     color: var(--text-primary);
@@ -3046,6 +3049,7 @@ textarea.md-input {
     color: var(--text-primary) !important;
     background-color: var(--md-surface) !important;
 }
+
 /* Card tag actions */
 .tag-action-btn {
     min-width: 28px;
@@ -3114,6 +3118,7 @@ textarea.md-input {
     min-height: 32px;
     padding: 0 10px;
 }
+
 /* Answer setup save button tuning */
 .set-key-save-btn {
     padding: 12px 22px !important;

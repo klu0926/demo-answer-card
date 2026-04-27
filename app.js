@@ -78,6 +78,42 @@ const showAppConfirm = (message, title = '請確認', variant = 'default') => sh
     showCancel: true
 });
 
+const showAppChoice = (message, title = '請選擇', options = []) => {
+    return new Promise((resolve) => {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop app-dialog-backdrop';
+        backdrop.tabIndex = -1;
+        const messageHtml = escapeHtmlText(message).replace(/\n/g, '<br>');
+        let buttonsHtml = options.map(opt => `<button class="md-btn ${opt.variant === 'primary' ? 'md-btn-contained' : 'md-btn-outlined'} app-choice-btn" data-value="${opt.value}" style="width:100%; justify-content:center;">${escapeHtmlText(opt.label)}</button>`).join('');
+        
+        backdrop.innerHTML = `
+            <div class="modal-dialog app-dialog app-dialog-question" role="dialog" aria-modal="true" aria-label="${escapeHtmlText(title)}">
+                <div class="modal-header">
+                    <h3>${escapeHtmlText(title)}</h3>
+                </div>
+                <p class="app-dialog-message" style="margin-bottom:16px; text-align:center;">${messageHtml}</p>
+                <div class="modal-actions" style="display:flex; flex-direction:column; gap:8px; width:100%;">
+                    ${buttonsHtml}
+                    <button class="md-btn md-btn-text app-dialog-cancel" style="width:100%; justify-content:center; margin-top:4px;">取消</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(backdrop);
+        requestAnimationFrame(() => backdrop.style.opacity = '1');
+        backdrop.focus();
+
+        const closeDialog = (val) => {
+            backdrop.style.opacity = '0';
+            setTimeout(() => { document.body.removeChild(backdrop); resolve(val); }, 200);
+        };
+        
+        backdrop.querySelectorAll('.app-choice-btn').forEach(btn => {
+            btn.addEventListener('click', () => closeDialog(btn.dataset.value));
+        });
+        backdrop.querySelector('.app-dialog-cancel').addEventListener('click', () => closeDialog(null));
+    });
+};
+
 const isLocalEnvironment = () => {
     const host = window.location.hostname.toLowerCase();
     return host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.local');
@@ -125,6 +161,30 @@ function navigateTo(page, params = {}) {
     }
 }
 
+let homeFilterTag = 'all';
+let homeSortBy = 'time_desc';
+
+const normalizeTagColor = (color) => /^#[0-9a-fA-F]{6}$/.test(color || '') ? color : '#94a3b8';
+
+const renderTagFilterOption = (tag) => {
+    const tagColor = normalizeTagColor(tag.color);
+    const selected = homeFilterTag === tag.id ? 'selected' : '';
+    return `<option value="${escapeHtmlText(tag.id)}" ${selected} style="color:${tagColor}; background-color:color-mix(in srgb, ${tagColor} 12%, var(--md-surface));">&#9632; ${escapeHtmlText(tag.name)}</option>`;
+};
+
+const syncTagFilterDisplayColor = () => {
+    const select = document.getElementById('sel-tag-filter');
+    if (!select) return;
+    const selectedTag = store.getTags().find(t => t.id === homeFilterTag);
+    if (!selectedTag) {
+        select.style.removeProperty('--tag-filter-color');
+        select.classList.remove('has-tag-color');
+        return;
+    }
+    select.style.setProperty('--tag-filter-color', normalizeTagColor(selectedTag.color));
+    select.classList.add('has-tag-color');
+};
+
 // ========== 1. Landing Page (Home / Library) ==========
 function renderHome() {
     document.body.classList.add('home-page');
@@ -139,20 +199,63 @@ function renderHome() {
                 <p>建立、作答、設定答案與回顧每次測驗紀錄。</p>
             </div>
             <div class="home-toolbar-actions">
-            <button class="md-btn md-btn-contained btn-create-card" id="btn-goto-create">
-                <i class="fa-solid fa-plus"></i> 製作答案卡
+            <button class="md-btn md-btn-contained" id="btn-goto-create" title="製作答案卡">
+                <i class="fa-solid fa-plus"></i> <span class="btn-text">製作</span>
             </button>
-            <button class="md-btn md-btn-outlined" id="btn-export-data" title="匯出資料">
-                <i class="fa-solid fa-arrow-up-from-bracket"></i> 匯出
+            <button class="md-btn md-btn-outlined" id="btn-manage-tags" title="管理標籤">
+                <i class="fa-solid fa-tags"></i> <span class="btn-text">標籤</span>
             </button>
-            <button class="md-btn md-btn-outlined" id="btn-import-data" title="匯入資料">
-                <i class="fa-solid fa-download"></i> 匯入
+            <button class="md-btn md-btn-outlined" id="btn-export-data" title="匯出資料" style="min-width: 44px; padding: 0 16px;">
+                <i class="fa-solid fa-arrow-up-from-bracket"></i>
+            </button>
+            <button class="md-btn md-btn-outlined" id="btn-import-data" title="匯入資料" style="min-width: 44px; padding: 0 16px;">
+                <i class="fa-solid fa-download"></i>
             </button>
             </div>
         </section>
+        
+        <div class="home-filters" style="display:flex; gap:16px; margin-bottom:16px; align-items:center; flex-wrap:wrap;">
+            <div class="filter-group" style="display:flex; align-items:center; gap:8px;">
+                <label for="sel-tag-filter" style="font-size:1.1rem; color:var(--text-secondary); cursor:pointer;" title="標籤過濾 (Tag Filter)">
+                    <i class="fa-solid fa-tags"></i>
+                </label>
+                <select id="sel-tag-filter" class="md-input" style="padding:6px 10px; width:auto; border-radius:6px; font-size: 0.9rem;">
+                    <option value="all" ${homeFilterTag === 'all' ? 'selected' : ''} style="color:var(--text-primary); background-color:var(--md-surface);">All Cards</option>
+                    <option value="none" ${homeFilterTag === 'none' ? 'selected' : ''} style="color:var(--text-primary); background-color:var(--md-surface);">No Tags</option>
+                    ${store.getTags().map(renderTagFilterOption).join('')}
+                </select>
+            </div>
+            <div class="filter-group" style="display:flex; align-items:center; gap:8px;">
+                <label for="sel-sort-by" style="font-size:1.1rem; color:var(--text-secondary); cursor:pointer;" title="排序方式 (Sort By)">
+                    <i class="fa-solid fa-arrow-down-short-wide"></i>
+                </label>
+                <select id="sel-sort-by" class="md-input" style="padding:6px 10px; width:auto; border-radius:6px; font-size: 0.9rem;">
+                    <option value="time_desc" ${homeSortBy === 'time_desc' ? 'selected' : ''}>Newest</option>
+                    <option value="time_asc" ${homeSortBy === 'time_asc' ? 'selected' : ''}>Oldest</option>
+                    <option value="name_asc" ${homeSortBy === 'name_asc' ? 'selected' : ''}>A-Z</option>
+                    <option value="name_desc" ${homeSortBy === 'name_desc' ? 'selected' : ''}>Z-A</option>
+                </select>
+            </div>
+        </div>
     `;
 
-    const cards = store.getCards();
+    let cards = store.getCards();
+    
+    // Apply filter
+    if (homeFilterTag === 'none') {
+        cards = cards.filter(c => !c.tagIds || c.tagIds.length === 0);
+    } else if (homeFilterTag !== 'all') {
+        cards = cards.filter(c => c.tagIds && c.tagIds.includes(homeFilterTag));
+    }
+
+    // Apply sort
+    cards.sort((a, b) => {
+        if (homeSortBy === 'time_desc') return b.createdAt - a.createdAt;
+        if (homeSortBy === 'time_asc') return a.createdAt - b.createdAt;
+        if (homeSortBy === 'name_asc') return a.name.localeCompare(b.name);
+        if (homeSortBy === 'name_desc') return b.name.localeCompare(a.name);
+        return 0;
+    });
 
     if (cards.length === 0) {
         appContainer.innerHTML = headerActionsHtml + `
@@ -182,6 +285,11 @@ function renderHome() {
             const history = store.getHistoryByCardId(c.id);
             const escapedCardName = escapeHtml(c.name);
             const pausedTest = store.getPausedTest(c.id);
+            const allTags = store.getTags();
+            const cardTags = (c.tagIds || []).map(tid => allTags.find(t => t.id === tid)).filter(Boolean);
+            const tagsHtml = cardTags.length > 0 
+                ? cardTags.map(t => `<span class="tag-chip" style="background:${normalizeTagColor(t.color)}; color:#fff; padding:2px 10px; border-radius:12px; font-size:12px; margin-right:4px;">${escapeHtml(t.name)}</span>`).join('') 
+                : `<span style="font-size:12px; color:var(--text-secondary);">無標籤</span>`;
 
             html += `
                 <div class="md-card preview-item">
@@ -195,19 +303,16 @@ function renderHome() {
                             <span><i class="fa-solid fa-layer-group"></i> ${c.sections.reduce((acc, s) => acc + s.parts.length, 0)} 個 Part</span>
                             <span><i class="fa-regular fa-clock"></i> 歷史 ${history.length}</span>
                         </div>
-                    </div>
-                    <div style="margin-bottom:16px;">
-                        <div class="preview-status ${hasKey ? 'status-haskey' : 'status-nokey'}">
-                            <i class="fa-solid ${hasKey ? 'fa-circle-check' : 'fa-circle-exclamation'}" style="font-size:18px;"></i>
-                            ${hasKey ? '已設定答案' : '尚未設定答案'}
+                        <div class="card-tags-row" style="margin-top:8px; display:flex; align-items:center; flex-wrap:wrap; gap:4px;">
+                            ${tagsHtml}
+                            <button class="btn-edit-card-tags tag-action-btn" data-id="${c.id}" title="Add tags"><i class="fa-solid fa-plus"></i><i class="fa-solid fa-tag"></i></button>${cardTags.length > 0 ? `<button class="btn-open-remove-card-tags tag-action-btn" data-id="${c.id}" title="Remove tags"><i class="fa-solid fa-minus"></i><i class="fa-solid fa-tag"></i></button>` : ''}
                         </div>
                     </div>
-                    <div class="preview-actions">
-                        <button class="md-btn md-btn-contained btn-start-test-action" data-id="${c.id}"><i class="fa-solid fa-play"></i> 開始測驗</button>
-                        ${pausedTest ? `<button class="md-btn md-btn-outlined btn-resume-test-action" style="color: var(--md-secondary); border-color: var(--md-secondary);" data-id="${c.id}">繼續測驗</button>` : ''}
-                        <button class="md-btn md-btn-outlined btn-set-key-action" data-id="${c.id}"><i class="fa-solid fa-key"></i> 設定解答</button>
-                        ${history.length > 0 ? `<button class="md-btn md-btn-outlined btn-view-history-action" data-id="${c.id}"><i class="fa-solid fa-chart-line"></i> ${history.length > 1 ? `歷史 (${history.length})` : '歷史'}</button>` : `<button class="md-btn md-btn-outlined" disabled><i class="fa-solid fa-chart-line"></i> 歷史</button>`}
-                        <button class="md-btn md-btn-text md-btn-error btn-delete-card-action" data-id="${c.id}"><i class="fa-solid fa-trash-can"></i> 刪除</button>
+                    <div class="preview-actions" style="margin-top:0; display:flex; gap:6px;">
+                        <button class="md-btn md-btn-contained btn-start-test-action" data-id="${c.id}" style="flex:3; padding:0 4px; font-size:0.75rem;"><i class="fa-solid fa-play"></i> ${pausedTest ? '開始/繼續測驗' : '開始測驗'}</button>
+                        <button class="md-btn md-btn-outlined btn-set-key-action" data-id="${c.id}" style="flex:2; padding:0 4px; font-size:0.75rem;"><i class="fa-solid ${hasKey ? 'fa-circle-check' : 'fa-circle-xmark'}" style="color:${hasKey ? 'var(--md-success)' : 'var(--md-error)'};"></i> 解答</button>
+                        ${history.length > 0 ? `<button class="md-btn md-btn-outlined btn-view-history-action" data-id="${c.id}" style="flex:2; padding:0 4px; font-size:0.75rem;"><i class="fa-solid fa-chart-line"></i> 歷史(${history.length})</button>` : `<button class="md-btn md-btn-outlined" disabled style="flex:2; padding:0 4px; font-size:0.75rem; cursor:default;"><i class="fa-solid fa-chart-line"></i> 歷史(0)</button>`}
+                        <button class="md-btn md-btn-text md-btn-error btn-delete-card-action" data-id="${c.id}" style="flex:2; padding:0 4px; font-size:0.75rem; min-width:auto;"><i class="fa-solid fa-trash-can"></i> 刪除</button>
                     </div>
                 </div>
             `;
@@ -252,15 +357,20 @@ function renderHome() {
             btn.addEventListener('click', async () => {
                 const cardId = btn.dataset.id;
                 if (store.getPausedTest(cardId)) {
-                    const shouldStart = await showAppConfirm('您有一個未完成的測驗進度。開啟新測驗將會覆蓋它。確定要開啟新測驗嗎？', '開啟新測驗', 'danger');
-                    if (!shouldStart) return;
+                    const choice = await showAppChoice('您有一個尚未完成的測驗進度。', '開始測驗', [
+                        { label: '繼續上次的測驗', value: 'resume', variant: 'primary' },
+                        { label: '放棄並開啟新測驗', value: 'restart', variant: 'danger' }
+                    ]);
+                    if (choice === 'resume') {
+                        navigateTo('test', { cardId: cardId, mode: 'test', isResume: true });
+                    } else if (choice === 'restart') {
+                        store.clearPausedTest(cardId);
+                        navigateTo('test', { cardId: cardId, mode: 'test' });
+                    }
+                } else {
+                    navigateTo('test', { cardId: cardId, mode: 'test' });
                 }
-                store.clearPausedTest(cardId);
-                navigateTo('test', { cardId: cardId, mode: 'test' });
             });
-        });
-        document.querySelectorAll('.btn-resume-test-action').forEach(btn => {
-            btn.addEventListener('click', () => navigateTo('test', { cardId: btn.dataset.id, mode: 'test', isResume: true }));
         });
         document.querySelectorAll('.btn-set-key-action').forEach(btn => {
             btn.addEventListener('click', () => navigateTo('test', { cardId: btn.dataset.id, mode: 'set_key' }));
@@ -275,7 +385,35 @@ function renderHome() {
 
     // Bind Top Level Actions
     document.getElementById('btn-goto-create').addEventListener('click', () => navigateTo('create'));
+    if (document.getElementById('btn-manage-tags')) {
+        document.getElementById('btn-manage-tags').addEventListener('click', () => window.manageTags());
+    }
+    
+    // Bind Filter & Sort
+    const selTagFilter = document.getElementById('sel-tag-filter');
+    if (selTagFilter) {
+        syncTagFilterDisplayColor();
+        selTagFilter.addEventListener('change', (e) => {
+            homeFilterTag = e.target.value;
+            syncTagFilterDisplayColor();
+            renderHome();
+        });
+    }
+    const selSortBy = document.getElementById('sel-sort-by');
+    if (selSortBy) {
+        selSortBy.addEventListener('change', (e) => {
+            homeSortBy = e.target.value;
+            renderHome();
+        });
+    }
 
+    // Bind Edit Card Tags
+    document.querySelectorAll('.btn-edit-card-tags').forEach(btn => {
+        btn.addEventListener('click', () => window.manageCardTags(btn.dataset.id));
+    });
+    document.querySelectorAll('.btn-open-remove-card-tags').forEach(btn => {
+        btn.addEventListener('click', () => window.removeCardTags(btn.dataset.id));
+    });
     // Export Logic
     document.getElementById('btn-export-data').addEventListener('click', () => {
         const dataStr = JSON.stringify(store.data, null, 2);
@@ -344,6 +482,195 @@ function renderHome() {
         input.click();
     });
 }
+
+// ========== Tag Management Functions ==========
+window.manageTags = () => {
+    const modalContainer = document.getElementById('modal-container');
+    const renderModal = () => {
+        const tags = store.getTags();
+        let listHtml = tags.map(t => `
+            <div class="tag-manage-row" style="display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid var(--border-color);">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="color" class="tag-color-input" data-id="${t.id}" value="${t.color || '#e2e8f0'}" style="width:24px; height:24px; padding:0; border:none; cursor:pointer; background:transparent;" title="設定標籤顏色">
+                    <input type="text" class="md-input tag-name-input" data-id="${t.id}" value="${escapeHtmlText(t.name)}" style="padding:4px 8px; height:auto;">
+                </div>
+                <button class="md-btn md-btn-text md-btn-error btn-delete-tag" data-id="${t.id}" title="刪除標籤"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+        `).join('');
+
+        if (tags.length === 0) listHtml = `<p style="color:var(--text-secondary); padding:8px;">目前沒有任何標籤</p>`;
+
+        modalContainer.innerHTML = `
+            <div class="modal-dialog" role="dialog" aria-modal="true">
+                <div class="modal-header">
+                    <h3>管理標籤</h3>
+                    <div class="modal-header-actions">
+                        <button class="md-btn md-btn-text modal-close-btn" id="btn-close-tags-modal">關閉</button>
+                    </div>
+                </div>
+                <div class="tag-create-area" style="display:flex; gap:8px; padding:16px 0; border-bottom:1px solid var(--border-color);">
+                    <input type="text" class="md-input" id="inp-new-tag" placeholder="輸入新標籤名稱">
+                    <button class="md-btn md-btn-contained" id="btn-add-tag" title="新增標籤" style="min-width: 44px; padding: 0 16px;"><i class="fa-solid fa-plus"></i></button>
+                </div>
+                <div class="tag-list" style="max-height:300px; overflow-y:auto; padding-top:8px;">
+                    ${listHtml}
+                </div>
+            </div>
+        `;
+        modalContainer.classList.remove('hidden');
+
+        document.getElementById('btn-close-tags-modal').addEventListener('click', () => {
+            modalContainer.classList.add('hidden');
+            renderHome(); // refresh home to reflect changes
+        });
+
+        document.getElementById('btn-add-tag').addEventListener('click', () => {
+            const val = document.getElementById('inp-new-tag').value.trim();
+            if (val) {
+                store.addTag(val);
+                renderModal();
+            }
+        });
+
+        document.querySelectorAll('.tag-name-input').forEach(inp => {
+            inp.addEventListener('blur', (e) => {
+                const newName = e.target.value.trim();
+                const id = e.target.dataset.id;
+                if (newName) store.renameTag(id, newName);
+                else e.target.value = store.getTags().find(t => t.id === id).name; // restore if empty
+            });
+            inp.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') e.target.blur();
+            });
+        });
+
+        document.querySelectorAll('.tag-color-input').forEach(inp => {
+            inp.addEventListener('change', (e) => {
+                const newColor = e.target.value;
+                const id = e.target.dataset.id;
+                store.updateTagColor(id, newColor);
+                renderHome(); // Immediately reflect color changes on cards if modal is closed
+            });
+        });
+
+        document.querySelectorAll('.btn-delete-tag').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const tag = store.getTags().find(t => t.id === e.currentTarget.dataset.id);
+                const confirm = await showAppConfirm(`確定要刪除標籤「${tag.name}」嗎？這會從所有套用此標籤的答案卡中移除，但不會刪除答案卡。`);
+                if (confirm) {
+                    store.deleteTag(tag.id);
+                    // if current filter is this tag, reset it
+                    if (homeFilterTag === tag.id) homeFilterTag = 'all';
+                    renderModal();
+                }
+            });
+        });
+    };
+    renderModal();
+};
+
+window.removeCardTags = (cardId) => {
+    const card = store.getCardById(cardId);
+    if (!card) return;
+    const modalContainer = document.getElementById('modal-container');
+    const allTags = store.getTags();
+    const cardTags = (card.tagIds || []).map(tid => allTags.find(t => t.id === tid)).filter(Boolean);
+
+    const closeModal = () => {
+        modalContainer.classList.add('hidden');
+        modalContainer.innerHTML = '';
+    };
+
+    if (cardTags.length === 0) {
+        showAppAlert('This card has no tags.');
+        return;
+    }
+
+    modalContainer.innerHTML = `
+        <div class="modal-dialog card-tag-remove-dialog" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <h3>Remove Tags</h3>
+                <button class="md-btn md-btn-text modal-close-btn" id="btn-close-remove-card-tags" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="card-tag-remove-list">
+                ${cardTags.map(t => `
+                    <div class="card-tag-remove-row">
+                        <span class="tag-chip" style="background:${normalizeTagColor(t.color)}; color:#fff;">${escapeHtmlText(t.name)}</span>
+                        <button class="md-btn md-btn-outlined btn-remove-tag-from-card" data-tag-id="${escapeHtmlText(t.id)}">
+                            <i class="fa-solid fa-minus"></i> Remove
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="modal-actions">
+                <button class="md-btn md-btn-contained" id="btn-done-remove-card-tags">Done</button>
+            </div>
+        </div>
+    `;
+    modalContainer.classList.remove('hidden');
+
+    document.getElementById('btn-close-remove-card-tags').addEventListener('click', closeModal);
+    document.getElementById('btn-done-remove-card-tags').addEventListener('click', closeModal);
+    document.querySelectorAll('.btn-remove-tag-from-card').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const nextTagIds = (card.tagIds || []).filter(tagId => tagId !== btn.dataset.tagId);
+            store.setCardTags(card.id, nextTagIds);
+            if (homeFilterTag === btn.dataset.tagId) homeFilterTag = 'all';
+            closeModal();
+            renderHome();
+        });
+    });
+};
+window.manageCardTags = (cardId) => {
+    const card = store.getCardById(cardId);
+    if (!card) return;
+    const modalContainer = document.getElementById('modal-container');
+    const tags = store.getTags();
+    const currentTagIds = card.tagIds || [];
+
+    if (tags.length === 0) {
+        showAppAlert('目前沒有任何標籤，請先至「管理標籤」建立！');
+        return;
+    }
+
+    let listHtml = tags.map(t => {
+        const checked = currentTagIds.includes(t.id) ? 'checked' : '';
+        return `
+            <label style="display:flex; align-items:center; gap:8px; padding:8px; cursor:pointer;">
+                <input type="checkbox" class="card-tag-checkbox" value="${t.id}" ${checked}>
+                <span>${escapeHtmlText(t.name)}</span>
+            </label>
+        `;
+    }).join('');
+
+    modalContainer.innerHTML = `
+        <div class="modal-dialog" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <h3>編輯答案卡標籤: ${escapeHtmlText(card.name)}</h3>
+            </div>
+            <div class="tag-list" style="max-height:300px; overflow-y:auto; padding:16px 0;">
+                ${listHtml}
+            </div>
+            <div class="modal-actions">
+                <button class="md-btn md-btn-outlined" id="btn-cancel-card-tags">取消</button>
+                <button class="md-btn md-btn-contained" id="btn-save-card-tags">儲存</button>
+            </div>
+        </div>
+    `;
+    modalContainer.classList.remove('hidden');
+
+    const closeModal = () => {
+        modalContainer.classList.add('hidden');
+    };
+
+    document.getElementById('btn-cancel-card-tags').addEventListener('click', closeModal);
+    document.getElementById('btn-save-card-tags').addEventListener('click', () => {
+        const selectedIds = Array.from(document.querySelectorAll('.card-tag-checkbox:checked')).map(cb => cb.value);
+        store.setCardTags(cardId, selectedIds);
+        closeModal();
+        renderHome();
+    });
+};
 
 // ========== 2. Create Page (Wizard) ==========
 let createWizardState = {
@@ -1629,6 +1956,7 @@ function renderTest(params) {
 // Initialize
 window.navigateTo = navigateTo; // Expose to global for inline onclick
 navigateTo('home');
+
 
 
 
